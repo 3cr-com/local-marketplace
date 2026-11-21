@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { loadCatalog, loadMyProfile, loadMyShops, loadVendorApplications, loadVendorProducts, placeCodOrder, removeVendorProduct, reviewVendorApplication, saveVendorProduct } from '../lib/marketplace';
 import {
   ArrowDownRight, ArrowRight, ArrowUpRight, BadgeCheck, Bell, Box, Boxes, ChevronDown,
   CircleHelp, Clock3, CreditCard, Heart, LayoutDashboard, MapPin, Menu, Minus, PackageCheck,
@@ -16,15 +17,15 @@ const media = {
   hero: '/images/3cr-neighbourhood-hero.png',
 };
 
-const products = [
-  { id: 1, name: 'Farm-fresh veggie box', detail: 'Seasonal · 1 box', price: 249, old: 299, category: 'Groceries', shop: 'Green Basket', distance: '0.8 km', image: media.groceries, badge: 'Fresh today', color: 'green' },
-  { id: 2, name: 'Everyday cotton kurta', detail: 'Hand block print · S–XXL', price: 899, category: 'Fashion', shop: 'Nila Boutique', distance: '1.2 km', image: media.fashion, badge: 'Local favourite', color: 'sand' },
-  { id: 3, name: 'Cloudstep sneakers', detail: 'Lightweight · Sizes 6–11', price: 1499, old: 1799, category: 'Footwear', shop: 'Sole Stories', distance: '2.1 km', image: media.footwear, badge: '15% off', color: 'blue' },
-  { id: 4, name: 'Studio wireless headphones', detail: 'Bluetooth · 24 hr battery', price: 2199, category: 'Electronics', shop: 'Circuit & Co.', distance: '3.4 km', image: media.electronics, badge: 'Bestseller', color: 'blue' },
-  { id: 5, name: 'Hand-thrown ceramic vase', detail: 'Made by hand · 18 cm', price: 649, category: 'Home', shop: 'House of Mitti', distance: '1.7 km', image: media.home, badge: 'Made nearby', color: 'sand' },
-  { id: 6, name: 'Daily glow care set', detail: 'Gentle essentials · 3 pcs', price: 579, category: 'Personal care', shop: 'Good Things Apothecary', distance: '2.6 km', image: media.care, badge: 'Clean beauty', color: 'green' },
-  { id: 7, name: 'Market greens bundle', detail: 'Spinach, coriander & mint', price: 129, category: 'Groceries', shop: 'Green Basket', distance: '0.8 km', image: media.groceries, badge: 'Picked at 7am', color: 'green' },
-  { id: 8, name: 'The relaxed linen shirt', detail: 'Pure cotton · S–XXL', price: 1190, category: 'Fashion', shop: 'Nila Boutique', distance: '1.2 km', image: media.fashion, badge: 'New arrival', color: 'sand' },
+const demoProducts = [
+  { id: 'demo-1', name: 'Farm-fresh veggie box', detail: 'Seasonal · 1 box', price: 249, old: 299, category: 'Groceries', shop: 'Green Basket', shopId: 'demo-green-basket', distance: '0.8 km', image: media.groceries, badge: 'Fresh today', color: 'green' },
+  { id: 'demo-2', name: 'Everyday cotton kurta', detail: 'Hand block print · S–XXL', price: 899, category: 'Fashion', shop: 'Nila Boutique', shopId: 'demo-nila', distance: '1.2 km', image: media.fashion, badge: 'Local favourite', color: 'sand' },
+  { id: 'demo-3', name: 'Cloudstep sneakers', detail: 'Lightweight · Sizes 6–11', price: 1499, old: 1799, category: 'Footwear', shop: 'Sole Stories', shopId: 'demo-sole', distance: '2.1 km', image: media.footwear, badge: '15% off', color: 'blue' },
+  { id: 'demo-4', name: 'Studio wireless headphones', detail: 'Bluetooth · 24 hr battery', price: 2199, category: 'Electronics', shop: 'Circuit & Co.', shopId: 'demo-circuit', distance: '3.4 km', image: media.electronics, badge: 'Bestseller', color: 'blue' },
+  { id: 'demo-5', name: 'Hand-thrown ceramic vase', detail: 'Made by hand · 18 cm', price: 649, category: 'Home', shop: 'House of Mitti', shopId: 'demo-mitti', distance: '1.7 km', image: media.home, badge: 'Made nearby', color: 'sand' },
+  { id: 'demo-6', name: 'Daily glow care set', detail: 'Gentle essentials · 3 pcs', price: 579, category: 'Personal care', shop: 'Good Things Apothecary', shopId: 'demo-good-things', distance: '2.6 km', image: media.care, badge: 'Clean beauty', color: 'green' },
+  { id: 'demo-7', name: 'Market greens bundle', detail: 'Spinach, coriander & mint', price: 129, category: 'Groceries', shop: 'Green Basket', shopId: 'demo-green-basket', distance: '0.8 km', image: media.groceries, badge: 'Picked at 7am', color: 'green' },
+  { id: 'demo-8', name: 'The relaxed linen shirt', detail: 'Pure cotton · S–XXL', price: 1190, category: 'Fashion', shop: 'Nila Boutique', shopId: 'demo-nila', distance: '1.2 km', image: media.fashion, badge: 'New arrival', color: 'sand' },
 ];
 
 const categories = [
@@ -71,17 +72,24 @@ function ProductCard({ product, add, isFavorite, toggleFavorite }) {
 }
 
 function CustomerStore({ cart, add, toggleFavorite, favorites, setCartOpen }) {
+  const [catalog, setCatalog] = useState(demoProducts);
+  const [catalogStatus, setCatalogStatus] = useState('');
   const [category, setCategory] = useState('All nearby');
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState('Recommended');
   const [savedOnly, setSavedOnly] = useState(false);
   const [radius, setRadius] = useState('10 km');
+  useEffect(() => {
+    loadCatalog().then((liveProducts) => {
+      if (liveProducts) { setCatalog(liveProducts); setCatalogStatus(liveProducts.length ? '' : 'No live products are available yet.'); }
+    }).catch(() => setCatalogStatus('Live catalogue could not be loaded. Showing preview items.'));
+  }, []);
   const filtered = useMemo(() => {
-    let list = products.filter(p => (category === 'All nearby' || p.category === category) && (!savedOnly || favorites.includes(p.id)) && `${p.name} ${p.shop} ${p.category}`.toLowerCase().includes(search.toLowerCase()));
+    let list = catalog.filter(p => (category === 'All nearby' || p.category === category) && (!savedOnly || favorites.includes(p.id)) && `${p.name} ${p.shop} ${p.category}`.toLowerCase().includes(search.toLowerCase()));
     if (sort === 'Price: low to high') list = [...list].sort((a, b) => a.price - b.price);
     if (sort === 'Nearest first') list = [...list].sort((a, b) => parseFloat(a.distance) - parseFloat(b.distance));
     return list;
-  }, [category, favorites, savedOnly, search, sort]);
+  }, [catalog, category, favorites, savedOnly, search, sort]);
   const cartCount = Object.values(cart).reduce((sum, item) => sum + item.qty, 0);
   return <>
     <header className="store-header">
@@ -106,7 +114,7 @@ function CustomerStore({ cart, add, toggleFavorite, favorites, setCartOpen }) {
       <section id="categories" className="category-scroller" aria-label="Shop by category">{categories.map((item, index) => <button key={item.label} className={`category-tile ${category === item.label ? 'category-selected' : ''}`} onClick={() => setCategory(item.label)}><span className={`category-art art-${index}`}>{item.emoji}</span><span className="category-name">{item.label}</span><span className="category-count">{item.count} finds</span></button>)}</section>
 
       <section id="nearby-finds" className="products-section">
-        <div className="products-heading"><div><p className="section-kicker">GOOD THINGS, CLOSE BY</p><h2>{savedOnly ? 'Your saved finds' : category === 'All nearby' ? 'Picked for your neighbourhood' : `${category}, nearby`}</h2><p className="product-subtitle">{filtered.length ? `${filtered.length} lovely finds from independent shops near you` : 'Try another search or category to find something nearby.'}</p></div><div className="product-tools"><button className={`saved-filter ${savedOnly ? 'saved-active' : ''}`} onClick={() => setSavedOnly(!savedOnly)}><Heart size={15} fill={savedOnly ? 'currentColor' : 'none'} />Saved</button><label className="sort-label">Sort by <select value={sort} onChange={e => setSort(e.target.value)}><option>Recommended</option><option>Nearest first</option><option>Price: low to high</option></select><ChevronDown size={14} /></label><button className="filter-button"><Settings2 size={16} /> Filters</button></div></div>
+        <div className="products-heading"><div><p className="section-kicker">GOOD THINGS, CLOSE BY</p><h2>{savedOnly ? 'Your saved finds' : category === 'All nearby' ? 'Picked for your neighbourhood' : `${category}, nearby`}</h2><p className="product-subtitle">{catalogStatus || (filtered.length ? `${filtered.length} lovely finds from independent shops near you` : 'Try another search or category to find something nearby.')}</p></div><div className="product-tools"><button className={`saved-filter ${savedOnly ? 'saved-active' : ''}`} onClick={() => setSavedOnly(!savedOnly)}><Heart size={15} fill={savedOnly ? 'currentColor' : 'none'} />Saved</button><label className="sort-label">Sort by <select value={sort} onChange={e => setSort(e.target.value)}><option>Recommended</option><option>Nearest first</option><option>Price: low to high</option></select><ChevronDown size={14} /></label><button className="filter-button"><Settings2 size={16} /> Filters</button></div></div>
         <div className="category-chips">{categories.map(item => <button key={item.label} className={category === item.label ? 'chip-active' : ''} onClick={() => setCategory(item.label)}>{item.label}</button>)}</div>
         {filtered.length ? <div className="product-grid">{filtered.map(product => <ProductCard key={product.id} product={product} add={add} isFavorite={favorites.includes(product.id)} toggleFavorite={toggleFavorite} />)}</div> : <div className="empty-state"><Search size={24} /><b>No finds just yet</b><span>Try a different search, or browse all nearby shops.</span><button onClick={() => { setSearch(''); setCategory('All nearby'); setSavedOnly(false); }}>Show all finds</button></div>}
         <div className="more-row"><span>Showing {filtered.length} of 1,248 local finds</span><button onClick={() => { setCategory('All nearby'); setSavedOnly(false); }}>See all nearby finds <ArrowRight size={15} /></button></div>
@@ -120,21 +128,32 @@ function Status({ children }) {
   return <span className={`status-pill status-${children.toLowerCase().replaceAll(' ', '-')}`}><span />{children}</span>;
 }
 
-function ProductManagement({ mode }) {
-  const [query, setQuery] = useState('');
-  const [stockFilter, setStockFilter] = useState('All products');
-  const inventory = [
-    { name: 'Farm-fresh veggie box', sku: 'GB-GR-014', category: 'Groceries', stock: 24, price: 249, status: 'In stock' },
-    { name: 'Free-range eggs', sku: 'GB-DA-008', category: 'Dairy & eggs', stock: 3, price: 96, status: 'Low stock' },
-    { name: 'Mangoes, Alphonso', sku: 'GB-FR-021', category: 'Seasonal fruit', stock: 5, price: 499, status: 'Low stock' },
-    { name: 'Market greens bundle', sku: 'GB-GR-009', category: 'Greens', stock: 18, price: 129, status: 'In stock' },
-    { name: 'Baby spinach', sku: 'GB-GR-011', category: 'Greens', stock: 6, price: 49, status: 'Low stock' },
-  ];
-  const list = inventory.filter(item => (stockFilter === 'All products' || (stockFilter === 'Low stock' ? item.status === 'Low stock' : item.status === 'In stock')) && `${item.name} ${item.sku} ${item.category}`.toLowerCase().includes(query.toLowerCase()));
-  return <section id={mode === 'Products' ? 'product-catalog' : 'inventory'} className="dash-panel"><div className="panel-heading"><div><h2>{mode === 'Products' ? 'Your product catalog' : 'Inventory at a glance'}</h2><p>{mode === 'Products' ? 'Keep your neighbourhood favourites up to date.' : 'Stock levels update as orders are fulfilled.'}</p></div><button className="outline-button" disabled title="Connect Backends to manage live catalog data"><Plus size={14} />Add product</button></div><div className="product-management-toolbar"><label className="table-search"><Search size={15} /><input aria-label="Search products" placeholder="Search your products" value={query} onChange={e => setQuery(e.target.value)} /></label><div className="table-tabs">{['All products', 'In stock', 'Low stock'].map(tab => <button key={tab} className={stockFilter === tab ? 'tab-active' : ''} onClick={() => setStockFilter(tab)}>{tab}{tab === 'Low stock' && <i>3</i>}</button>)}</div></div><div className="table-scroll"><table><thead><tr><th>PRODUCT</th><th>SKU</th><th>CATEGORY</th><th>PRICE</th><th>AVAILABLE</th><th>STATUS</th><th></th></tr></thead><tbody>{list.map(item => <tr key={item.sku}><td><b>{item.name}</b></td><td>{item.sku}</td><td>{item.category}</td><td><b>{money(item.price)}</b></td><td><b>{item.stock} units</b></td><td><Status>{item.status}</Status></td><td><button className="row-more" aria-label={`Product options for ${item.name}`} disabled title="Product updates need Backends">•••</button></td></tr>)}</tbody></table>{list.length === 0 && <div className="no-table-results">No products match this view.</div>}</div><div className="table-footer"><span>{list.length} of 86 products shown · Changes require marketplace setup</span><button onClick={() => setStockFilter('Low stock')}>Review low stock <ArrowRight size={13} /></button></div></section>;
+const emptyProduct = { name: '', description: '', category: '', price: 0, stock: 0, image_url: '', is_active: true };
+
+function ProductManagement({ mode, user }) {
+  const [query, setQuery] = useState(''); const [stockFilter, setStockFilter] = useState('All products');
+  const [shops, setShops] = useState([]); const [shopId, setShopId] = useState(''); const [products, setProducts] = useState([]);
+  const [message, setMessage] = useState(''); const [loading, setLoading] = useState(false); const [editor, setEditor] = useState(null); const [saving, setSaving] = useState(false);
+  async function refreshShops() { if (!user) { setMessage('Sign in with the account that owns a shop to manage products.'); return; } setLoading(true); try { const data = await loadMyShops(user.id); setShops(data); setShopId(current => current && data.some(shop => shop.id === current) ? current : data[0]?.id || ''); if (!data.length) setMessage('No shop is assigned to this account yet.'); } catch (error) { setMessage(error instanceof Error ? error.message : 'Unable to load your shops.'); } finally { setLoading(false); } }
+  async function refreshProducts() { if (!shopId) { setProducts([]); return; } setLoading(true); try { setProducts(await loadVendorProducts(shopId)); } catch (error) { setMessage(error instanceof Error ? error.message : 'Unable to load products.'); } finally { setLoading(false); } }
+  useEffect(() => { refreshShops(); }, [user?.id]);
+  useEffect(() => { refreshProducts(); }, [shopId]);
+  const list = products.filter(item => (stockFilter === 'All products' || (stockFilter === 'Low stock' ? item.stock > 0 && item.stock <= 5 : item.stock > 5)) && `${item.name} ${item.category}`.toLowerCase().includes(query.toLowerCase()));
+  const label = item => !item.is_active ? 'Hidden' : item.stock === 0 ? 'Out of stock' : item.stock <= 5 ? 'Low stock' : 'In stock';
+  async function submitProduct(event) { event.preventDefault(); if (!editor || !shopId) return; const price = Number(editor.price); const stock = Number(editor.stock); if (!editor.name.trim() || !editor.category.trim() || !Number.isInteger(price) || price < 0 || !Number.isInteger(stock) || stock < 0) { setMessage('Enter a name, category, and non-negative whole-number price and stock.'); return; } setSaving(true); try { await saveVendorProduct(shopId, { ...editor, price_paise: price * 100, stock }); setEditor(null); await refreshProducts(); setMessage('Product saved.'); } catch (error) { setMessage(error instanceof Error ? error.message : 'Unable to save the product.'); } finally { setSaving(false); } }
+  async function deleteProduct(product) { if (!window.confirm(`Delete ${product.name}? This cannot be undone.`)) return; try { await removeVendorProduct(product.id); await refreshProducts(); setMessage('Product deleted.'); } catch (error) { setMessage(error instanceof Error ? error.message : 'Unable to delete the product.'); } }
+  return <section id={mode === 'Products' ? 'product-catalog' : 'inventory'} className="dash-panel"><div className="panel-heading"><div><h2>{mode === 'Products' ? 'Your product catalog' : 'Inventory at a glance'}</h2><p>Changes are saved to your live Supabase shop catalog.</p></div><button className="outline-button" disabled={!shopId} onClick={() => setEditor({ ...emptyProduct })}><Plus size={14} />Add product</button></div>{shops.length > 1 && <label className="shop-select">Shop <select value={shopId} onChange={e => setShopId(e.target.value)}>{shops.map(shop => <option key={shop.id} value={shop.id}>{shop.name}</option>)}</select></label>}<div className="product-management-toolbar"><label className="table-search"><Search size={15} /><input aria-label="Search products" placeholder="Search your products" value={query} onChange={e => setQuery(e.target.value)} /></label><div className="table-tabs">{['All products', 'In stock', 'Low stock'].map(tab => <button key={tab} className={stockFilter === tab ? 'tab-active' : ''} onClick={() => setStockFilter(tab)}>{tab}{tab === 'Low stock' && products.filter(item => item.stock > 0 && item.stock <= 5).length > 0 && <i>{products.filter(item => item.stock > 0 && item.stock <= 5).length}</i>}</button>)}</div></div>{message && <p className="catalog-message" role="status">{message}</p>}<div className="table-scroll"><table><thead><tr><th>PRODUCT</th><th>CATEGORY</th><th>PRICE</th><th>AVAILABLE</th><th>STATUS</th><th></th></tr></thead><tbody>{list.map(item => <tr key={item.id}><td><b>{item.name}</b><small className="product-description">{item.description}</small></td><td>{item.category}</td><td><b>{money(item.price_paise / 100)}</b></td><td><b>{item.stock} units</b></td><td><Status>{label(item)}</Status></td><td><button className="row-more" aria-label={`Edit ${item.name}`} onClick={() => setEditor({ ...item, price: item.price_paise / 100, image_url: item.image_url || '' })}>Edit</button></td></tr>)}</tbody></table>{loading && <div className="no-table-results">Loading your catalog…</div>}{!loading && !list.length && <div className="no-table-results">{shopId ? 'No products match this view.' : 'Connect a shop to start managing products.'}</div>}</div><div className="table-footer"><span>{list.length} product{list.length === 1 ? '' : 's'} shown</span><button onClick={() => setStockFilter('Low stock')}>Review low stock <ArrowRight size={13} /></button></div>{editor && <div className="cart-overlay" onMouseDown={event => event.target === event.currentTarget && !saving && setEditor(null)}><aside className="cart-drawer product-editor" aria-label="Product editor"><div className="cart-head"><div><p className="section-kicker">LIVE CATALOG</p><h2>{editor.id ? 'Edit product' : 'Add product'}</h2></div><button className="icon-button" aria-label="Close editor" disabled={saving} onClick={() => setEditor(null)}><X size={19} /></button></div><form className="account-form" onSubmit={submitProduct}><label>Product name<input required value={editor.name} onChange={e => setEditor({ ...editor, name: e.target.value })} /></label><label>Category<input required value={editor.category} onChange={e => setEditor({ ...editor, category: e.target.value })} placeholder="Groceries, Fashion…" /></label><label>Description<textarea value={editor.description} onChange={e => setEditor({ ...editor, description: e.target.value })} placeholder="What should customers know?" /></label><div className="product-form-row"><label>Price (₹)<input required type="number" min="0" step="1" value={editor.price} onChange={e => setEditor({ ...editor, price: e.target.value })} /></label><label>Stock<input required type="number" min="0" step="1" value={editor.stock} onChange={e => setEditor({ ...editor, stock: e.target.value })} /></label></div><label>Image URL<input type="url" value={editor.image_url} onChange={e => setEditor({ ...editor, image_url: e.target.value })} placeholder="https://…" /></label><label className="availability-toggle"><input type="checkbox" checked={editor.is_active} onChange={e => setEditor({ ...editor, is_active: e.target.checked })} />Show this product in the storefront</label><button className="hero-cta" disabled={saving}>{saving ? 'Saving…' : 'Save product'}</button>{editor.id && <button className="delete-product" type="button" disabled={saving} onClick={() => { setEditor(null); deleteProduct(editor); }}>Delete product</button>}</form></aside></div>}</section>;
 }
 
-function Dashboard({ role, setRole }) {
+function VendorApplicationQueue() {
+  const [applications, setApplications] = useState([]); const [message, setMessage] = useState(''); const [loading, setLoading] = useState(true); const [busyId, setBusyId] = useState('');
+  async function refresh() { setLoading(true); try { setApplications(await loadVendorApplications()); } catch (error) { setMessage(error instanceof Error ? error.message : 'Unable to load vendor applications.'); } finally { setLoading(false); } }
+  useEffect(() => { refresh(); }, []);
+  async function review(application, decision) { const reason = decision === 'rejected' ? window.prompt('Reason for rejection (optional):') || '' : ''; setBusyId(application.id); setMessage(''); try { await reviewVendorApplication(application.id, decision, reason); await refresh(); setMessage(`${application.shop_name} was ${decision}.`); } catch (error) { setMessage(error instanceof Error ? error.message : 'Unable to review application.'); } finally { setBusyId(''); } }
+  return <section className="dash-panel"><div className="panel-heading"><div><h2>Vendor applications</h2><p>Approve a verified shop to create its vendor workspace.</p></div><button className="subtle-button" onClick={refresh}>Refresh</button></div>{message && <p className="catalog-message" role="status">{message}</p>}<div className="table-scroll"><table><thead><tr><th>SHOP</th><th>CATEGORY</th><th>ADDRESS</th><th>APPLIED</th><th>ACTIONS</th></tr></thead><tbody>{applications.map(application => <tr key={application.id}><td><b>{application.shop_name}</b></td><td>{application.category}</td><td>{application.address}</td><td>{new Date(application.created_at).toLocaleDateString('en-IN')}</td><td><div className="application-actions"><button disabled={busyId === application.id} onClick={() => review(application, 'approved')}>Approve</button><button disabled={busyId === application.id} onClick={() => review(application, 'rejected')}>Reject</button></div></td></tr>)}</tbody></table>{loading && <div className="no-table-results">Loading applications…</div>}{!loading && !applications.length && <div className="no-table-results">No pending vendor applications.</div>}</div><div className="table-footer"><span>Approved shops start hidden until an administrator activates them and completes location details.</span></div></section>;
+}
+
+function Dashboard({ role, setStorefront, user }) {
   const [menu, setMenu] = useState('Overview');
   const [query, setQuery] = useState('');
   const [orderFilter, setOrderFilter] = useState('All orders');
@@ -153,7 +172,7 @@ function Dashboard({ role, setRole }) {
       {menus.map(group => <div className="sidebar-group" key={group.title}><span className="sidebar-title">{group.title}</span>{group.items.map(([label, Icon, count]) => <button key={label} className={`sidebar-link ${menu === label ? 'sidebar-active' : ''}`} onClick={() => setMenu(label)}><Icon size={17} /><span>{label}</span>{count && <b className="sidebar-count">{count}</b>}</button>)}</div>)}
       <div className="sidebar-bottom"><div className="help-card"><span><CircleHelp size={16} /></span><b>Need a hand?</b><small>Our local team is here for you.</small><button onClick={() => setMenu('Help & support')}>Visit help centre <ArrowRight size={13} /></button></div><button className="account-link"><span className="profile-button small-profile">{vendor ? 'A' : 'N'}</span><span><b>{vendor ? 'Arjun Patel' : 'Nandita Rao'}</b><small>{vendor ? 'Store owner' : 'Platform admin'}</small></span><ChevronDown size={14} /></button></div>
     </aside>
-    <main className="dash-main"><header className="dash-topbar"><div className="breadcrumbs">{vendor ? 'Green Basket' : 'Platform'} <span>/</span> <b>{menu}</b></div><div className="dash-top-actions"><button className="view-store-link" onClick={() => setRole('customer')}><ArrowUpRight size={14} /> View marketplace</button><button className="icon-button" aria-label="Notifications"><Bell size={18} /><i /></button><div className="avatar-name">{vendor ? 'AP' : 'NR'}</div></div></header>
+    <main className="dash-main"><header className="dash-topbar"><div className="breadcrumbs">{vendor ? 'Green Basket' : 'Platform'} <span>/</span> <b>{menu}</b></div><div className="dash-top-actions"><button className="view-store-link" onClick={() => setStorefront(true)}><ArrowUpRight size={14} /> View marketplace</button><button className="icon-button" aria-label="Notifications"><Bell size={18} /><i /></button><div className="avatar-name">{vendor ? 'AP' : 'NR'}</div></div></header>
       <div className="dash-content"><div className="dash-title-row"><div><p className="section-kicker">{vendor ? 'FRIDAY, 20 NOVEMBER 2026' : 'PLATFORM OVERVIEW'}</p><h1>{vendor ? 'Good morning, Arjun 👋' : 'Good morning, Nandita 👋'}</h1><p>{vendor ? 'Here’s what’s happening at your shop today.' : 'A live view of your marketplace, ready to grow to 10,000 local shops.'}</p></div><button className="outline-button" onClick={() => setMenu(vendor ? 'Store profile' : 'Service areas')}><ArrowUpRight size={15} />{vendor ? 'View your storefront' : 'Explore service areas'}</button></div>
         <div className="dashboard-metrics">{(vendor ? [
           { label: 'Today’s sales', value: '₹18,420', change: '+12.8%', note: 'vs. yesterday', icon: CreditCard, trend: 'up' },
@@ -166,29 +185,43 @@ function Dashboard({ role, setRole }) {
           { label: 'Active customers', value: '24.6k', change: '+6.2%', note: 'this month', icon: Users, trend: 'up' },
           { label: 'Coverage radius', value: '10 km', change: '8 areas', note: 'across Bengaluru', icon: MapPin, trend: 'up' },
         ]).map(({ label, value, change, note, icon: Icon, trend }) => <article className="metric-card" key={label}><div className="metric-top"><span>{label}</span><span className="metric-icon"><Icon size={17} /></span></div><div className="metric-value">{value}</div><div className="metric-foot"><b className={trend === 'warn' ? 'metric-warning' : ''}>{trend !== 'warn' && <ArrowUpRight size={13} />}{change}</b><span>{note}</span></div></article>)}</div>
-        {vendor ? (menu === 'Products' || menu === 'Inventory' ? <ProductManagement mode={menu} /> : <>
+        {vendor ? (menu === 'Products' || menu === 'Inventory' ? <ProductManagement mode={menu} user={user} /> : <>
           <section id="orders-overview" className="dash-panel"><div className="panel-heading"><div><h2>{menu === 'Overview' ? 'Recent orders' : menu === 'Orders' ? 'All orders' : menu === 'Products' ? 'Your products' : menu === 'Inventory' ? 'Stock overview' : menu}</h2><p>{menu === 'Orders' ? 'Manage every order from your neighbourhood.' : 'Keep your shop moving, one order at a time.'}</p></div><button className="subtle-button" onClick={() => setMenu('Orders')}>View all orders <ArrowRight size={14} /></button></div><div className="table-controls"><div className="table-tabs">{['All orders', 'New', 'Preparing', 'Ready for pickup'].map(tab => <button key={tab} className={orderFilter === tab ? 'tab-active' : ''} onClick={() => { setOrderFilter(tab); setMenu('Orders'); }}>{tab}{tab === 'New' && <i>4</i>}</button>)}</div><button className="outline-button small-outline"><Settings2 size={14} /> Filter</button></div><div className="table-scroll"><table><thead><tr><th>ORDER</th><th>ITEMS</th><th>CUSTOMER</th><th>PLACED</th><th>STATUS</th><th>TOTAL</th><th></th></tr></thead><tbody>{filteredOrders.length ? filteredOrders.map(order => <tr key={order.id}><td><b>{order.id}</b></td><td>{order.item}</td><td>{order.customer}</td><td>{order.time}</td><td><Status>{order.status}</Status></td><td><b>{order.amount}</b></td><td><button className="row-more" aria-label={`Open order ${order.id}`} onClick={() => setMenu('Orders')}>•••</button></td></tr>) : <tr><td colSpan="7" className="no-table-results">No orders in this view.</td></tr>}</tbody></table></div><div className="table-footer"><span>Showing {filteredOrders.length} of 24 orders today</span><button onClick={() => setMenu('Orders')}>Go to orders <ArrowRight size={13} /></button></div></section>
           <section id="store-health" className="dash-lower"><div className="dash-panel mini-panel"><div className="panel-heading"><div><h2>Stock to check</h2><p>Keep your bestsellers ready to go.</p></div><button className="dots-button">•••</button></div>{[['Free-range eggs', 'Green Basket', '3 left'], ['Mangoes, Alphonso', 'Green Basket', '5 left'], ['Baby spinach', 'Green Basket', '6 left']].map((r, i) => <div className="stock-row" key={r[0]}><span className={`stock-thumb stock-${i}`}>{i === 0 ? '🥚' : i === 1 ? '🥭' : '🥬'}</span><span><b>{r[0]}</b><small>{r[1]}</small></span><span className="low-stock">{r[2]}</span></div>)}<button className="panel-bottom-link" onClick={() => setMenu('Inventory')}>Manage inventory <ArrowRight size={13} /></button></div><div className="dash-panel delivery-panel"><span className="delivery-icon"><PackageCheck size={19} /></span><p className="section-kicker">ON THE MOVE</p><h2>Delivery is looking good</h2><p>All 18 orders scheduled today are on track. Your neighbours are loving the quick turnarounds.</p><div className="delivery-progress"><span className="progress-78" /></div><div className="delivery-caption"><b>78%</b> delivered before 1 pm <span>18 total orders</span></div></div></section>
-        </>) : <>
+        </>) : (menu === 'Vendors' ? <VendorApplicationQueue /> : <>
           <section id="vendor-management" className="dash-panel"><div className="panel-heading"><div><h2>{menu === 'Overview' ? 'Neighbourhood vendors' : menu}</h2><p>Independent businesses bringing good things closer.</p></div><div className="vendor-panel-actions"><label className="table-search"><Search size={15} /><input aria-label="Search vendors" placeholder="Search vendors" value={query} onChange={e => setQuery(e.target.value)} /></label><button className="subtle-button" onClick={() => setMenu('Vendors')}>All vendors <ArrowRight size={14} /></button></div></div><div className="table-scroll"><table><thead><tr><th>SHOP</th><th>CATEGORY</th><th>AREA</th><th>ORDERS</th><th>STATUS</th><th></th></tr></thead><tbody>{filteredVendors.map(v => <tr key={v.name}><td><div className="vendor-cell"><span className="vendor-initials">{v.initials}</span><span><b>{v.name}</b><small>{v.owner}</small></span></div></td><td>{v.category}</td><td>{v.area}</td><td><b>{v.orders}</b></td><td><Status>{v.status}</Status></td><td><button className="row-more" aria-label={`Manage ${v.name}`} onClick={() => setMenu('Vendors')}>•••</button></td></tr>)}</tbody></table>{filteredVendors.length === 0 && <div className="no-table-results">No vendors match your search.</div>}</div><div className="table-footer"><span>Showing {filteredVendors.length} of 1,248 approved vendors</span><button onClick={() => setMenu('Vendors')}>Manage vendors <ArrowRight size={13} /></button></div></section>
           <section id="marketplace-health" className="dash-lower"><div className="dash-panel mini-panel"><div className="panel-heading"><div><h2>Growing neighbourhoods</h2><p>Active shopping across Bengaluru.</p></div><button className="dots-button">•••</button></div>{[['Indiranagar', '182 vendors', '2.8k'], ['Koramangala', '164 vendors', '2.4k'], ['HSR Layout', '138 vendors', '1.9k']].map((r, i) => <div className="area-row" key={r[0]}><span className={`area-dot area-dot-${i}`} /><span><b>{r[0]}</b><small>{r[1]}</small></span><span className="area-orders">{r[2]} orders</span></div>)}<button className="panel-bottom-link" onClick={() => setMenu('Service areas')}>Explore all service areas <ArrowRight size={13} /></button></div><div className="dash-panel delivery-panel admin-insight"><span className="delivery-icon"><ShieldCheck size={19} /></span><p className="section-kicker">NEIGHBOURHOOD HEALTH</p><h2>Independent shops are thriving</h2><p>Local orders are up 18% this month. More neighbours are choosing shops close to home.</p><div className="insight-highlight"><ArrowUpRight size={16} /><b>+18%</b><span>local orders this month</span></div></div></section>
-        </>}
+        </>)}
         <div className="dash-footer"><span>3cr Marketplace <span>·</span> A little closer to home.</span><span>Workspace <b><i /> Preview mode</b></span></div>
       </div>
     </main>
   </div>;
 }
 
-function CartDrawer({ cart, setCart, close }) {
+function CartDrawer({ cart, setCart, close, user }) {
   const items = Object.values(cart);
   const total = items.reduce((sum, item) => sum + item.product.price * item.qty, 0);
+  const [deliveryAddress, setDeliveryAddress] = useState('');
+  const [checkoutMessage, setCheckoutMessage] = useState('');
+  const [placingOrder, setPlacingOrder] = useState(false);
+  const shopId = items[0]?.product.shopId;
   const update = (id, delta) => setCart(current => {
     const next = { ...current };
     const quantity = (next[id]?.qty || 0) + delta;
     if (quantity <= 0) delete next[id]; else next[id] = { ...next[id], qty: quantity };
     return next;
   });
-  return <div className="cart-overlay" onMouseDown={e => e.target === e.currentTarget && close()}><aside className="cart-drawer" aria-label="Your shopping bag"><div className="cart-head"><div><p className="section-kicker">YOUR LOCAL FINDS</p><h2>Your bag <span>({items.reduce((n, i) => n + i.qty, 0)})</span></h2></div><button className="icon-button" aria-label="Close bag" onClick={close}><X size={19} /></button></div>{items.length ? <><div className="cart-items">{items.map(({ product, qty }) => <div className="cart-item" key={product.id}><img src={product.image} alt="" /><div className="cart-item-info"><b>{product.name}</b><small>{product.shop} · {product.distance}</small><strong>{money(product.price)}</strong><div className="quantity-control"><button aria-label="Remove one" onClick={() => update(product.id, -1)}><Minus size={12} /></button><span>{qty}</span><button aria-label="Add one" onClick={() => update(product.id, 1)}><Plus size={12} /></button></div></div><button className="remove-item" aria-label="Remove item" onClick={() => update(product.id, -qty)}><X size={14} /></button></div>)}</div><div className="cart-bottom"><div className="delivery-estimate"><Truck size={16} /><span>Estimated delivery</span><b>Today, 30–45 min</b></div><div className="subtotal-row"><span>Subtotal</span><b>{money(total)}</b></div><p className="checkout-note">Razorpay Route is the planned first marketplace payment provider, behind a replaceable provider adapter. Checkout is not live: orders aren’t submitted or saved, and no payment details are collected until merchant onboarding, secure server-side order creation, and verified payment webhooks are in place.</p><button className="checkout-disabled" disabled aria-disabled="true"><CreditCard size={16} />Razorpay Route setup pending</button><button className="keep-shopping" onClick={close}>Keep browsing nearby</button></div></> : <div className="cart-empty"><span><ShoppingBag size={29} /></span><h3>Your bag is taking a little stroll.</h3><p>Add something lovely from a shop around the corner.</p><button onClick={close}>Find a local favourite <ArrowRight size={14} /></button></div>}</aside></div>;
+  async function submitCodOrder() {
+    if (!user) { setCheckoutMessage('Sign in before placing a COD order.'); return; }
+    if (!shopId || shopId.startsWith('demo-')) { setCheckoutMessage('Connect Supabase and add live shop products to place orders.'); return; }
+    setPlacingOrder(true); setCheckoutMessage('');
+    try {
+      const orderId = await placeCodOrder(shopId, deliveryAddress, items.map(({ product, qty }) => ({ productId: product.id, quantity: qty })));
+      setCart({}); setCheckoutMessage(`COD order placed. Reference: ${orderId.slice(0, 8)}`);
+    } catch (error) { setCheckoutMessage(error instanceof Error ? error.message : 'Unable to place the order.'); }
+    finally { setPlacingOrder(false); }
+  }
+  return <div className="cart-overlay" onMouseDown={e => e.target === e.currentTarget && close()}><aside className="cart-drawer" aria-label="Your shopping bag"><div className="cart-head"><div><p className="section-kicker">YOUR LOCAL FINDS</p><h2>Your bag <span>({items.reduce((n, i) => n + i.qty, 0)})</span></h2></div><button className="icon-button" aria-label="Close bag" onClick={close}><X size={19} /></button></div>{items.length ? <><div className="cart-items">{items.map(({ product, qty }) => <div className="cart-item" key={product.id}><img src={product.image} alt="" /><div className="cart-item-info"><b>{product.name}</b><small>{product.shop} · {product.distance}</small><strong>{money(product.price)}</strong><div className="quantity-control"><button aria-label="Remove one" onClick={() => update(product.id, -1)}><Minus size={12} /></button><span>{qty}</span><button aria-label="Add one" onClick={() => update(product.id, 1)}><Plus size={12} /></button></div></div><button className="remove-item" aria-label="Remove item" onClick={() => update(product.id, -qty)}><X size={14} /></button></div>)}</div><div className="cart-bottom"><div className="delivery-estimate"><Truck size={16} /><span>Estimated delivery</span><b>Today, 30–45 min</b></div><div className="subtotal-row"><span>Subtotal</span><b>{money(total)}</b></div><label className="checkout-address">Delivery address<textarea value={deliveryAddress} onChange={e => setDeliveryAddress(e.target.value)} placeholder="House / flat, street, area, city, pincode" required /></label><p className="checkout-note">Cash on delivery is available for one shop per order. Online payments will be enabled only after secure provider integration and verification.</p><button className="hero-cta" onClick={submitCodOrder} disabled={placingOrder}>{placingOrder ? 'Placing order…' : 'Place COD order'}</button>{checkoutMessage && <p className="checkout-message" role="status">{checkoutMessage}</p>}<button className="keep-shopping" onClick={close}>Keep browsing nearby</button></div></> : <div className="cart-empty"><span><ShoppingBag size={29} /></span><h3>Your bag is taking a little stroll.</h3><p>Add something lovely from a shop around the corner.</p><button onClick={close}>Find a local favourite <ArrowRight size={14} /></button></div>}</aside></div>;
 }
 
 function AccountAccess({ user, setUser }) {
@@ -209,31 +242,48 @@ function AccountAccess({ user, setUser }) {
     if (!supabase) { setMessage('Backend connection is not available in this build.'); return; }
     setBusy(true); setMessage('');
     const result = mode === 'Create account'
-      ? await supabase.auth.signUp({ email, password, options: { emailRedirectTo: `https://${import.meta.env.PUBLIC_AUTH_DOMAIN}/auth/callback` } })
+      ? await supabase.auth.signUp({ email, password })
       : await supabase.auth.signInWithPassword({ email, password });
     setBusy(false);
-    setMessage(result.error?.message || (mode === 'Create account' && !result.data.session ? 'Check your email to confirm your account, then sign in.' : 'You’re signed in.'));
+    setMessage(result.error?.message || (mode === 'Create account' && !result.data.session ? 'Account created. Sign in with your email and password.' : 'You’re signed in.'));
     if (result.data.session?.user) setOpen(false);
   }
   return <>
     <button className="account-access-trigger" onClick={() => user ? supabase?.auth.signOut() : setOpen(true)}>{user ? 'Sign out' : 'Sign in'}</button>
-    {open && <div className="cart-overlay" onMouseDown={e => e.target === e.currentTarget && setOpen(false)}><aside className="cart-drawer" aria-label="Account access"><div className="cart-head"><div><p className="section-kicker">NEARBY ACCOUNT</p><h2>{mode}</h2></div><button className="icon-button" aria-label="Close" onClick={() => setOpen(false)}><X size={19} /></button></div><form className="account-form" onSubmit={submit}><label>Email address<input type="email" required autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} /></label><label>Password<input type="password" minLength="8" required autoComplete={mode === 'Sign in' ? 'current-password' : 'new-password'} value={password} onChange={e => setPassword(e.target.value)} /></label><button className="hero-cta" disabled={busy}>{busy ? 'Please wait…' : mode}</button>{message && <p role="status">{message}</p>}</form><button className="keep-shopping" onClick={() => { setMode(mode === 'Sign in' ? 'Create account' : 'Sign in'); setMessage(''); }}>{mode === 'Sign in' ? 'New here? Create an account' : 'Already registered? Sign in'}</button></aside></div>}
+    {user && <button className="account-access-trigger" style={{ bottom: 136 }} onClick={() => window.location.assign('/account/settings/')}>Account settings</button>}
+    {open && <div className="cart-overlay" onMouseDown={e => e.target === e.currentTarget && setOpen(false)}><aside className="cart-drawer auth-panel" aria-label="Account access"><div className="cart-head"><div><p className="section-kicker">3CR ACCOUNT</p><h2>{mode}</h2></div><button className="icon-button" aria-label="Close" onClick={() => setOpen(false)}><X size={19} /></button></div><form className="account-form" onSubmit={submit}><label>Email address<input type="email" required autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} /></label><label>Password<input type="password" minLength="8" required autoComplete={mode === 'Sign in' ? 'current-password' : 'new-password'} value={password} onChange={e => setPassword(e.target.value)} /></label><button className="hero-cta" disabled={busy}>{busy ? 'Please wait…' : mode}</button>{message && <p role="status">{message}</p>}</form>{mode === 'Sign in' && <button className="keep-shopping" onClick={() => window.location.assign('/forgot-password/')}>Forgot password?</button>}<button className="keep-shopping" onClick={() => { setMode(mode === 'Sign in' ? 'Create account' : 'Sign in'); setMessage(''); }}>{mode === 'Sign in' ? 'New here? Create an account' : 'Already registered? Sign in'}</button></aside></div>}
   </>;
 }
 
 export default function MarketplaceApp() {
   const [user, setUser] = useState(null);
   const [role, setRole] = useState('customer');
+  const [showStorefront, setShowStorefront] = useState(false);
   const [cart, setCart] = useState({});
   const [cartOpen, setCartOpen] = useState(false);
   const [favorites, setFavorites] = useState([2]);
-  const add = product => setCart(current => ({ ...current, [product.id]: { product, qty: (current[product.id]?.qty || 0) + 1 } }));
+  useEffect(() => {
+    if (!supabase) return;
+    const applySession = async (session) => {
+      setUser(session?.user || null);
+      if (!session?.user) { setRole('customer'); setShowStorefront(false); return; }
+      try { const profile = await loadMyProfile(); setRole(profile?.role === 'admin' ? 'admin' : profile?.seller_enabled ? 'vendor' : 'customer'); setShowStorefront(false); }
+      catch { setRole('customer'); }
+    };
+    supabase.auth.getSession().then(({ data }) => applySession(data.session));
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => applySession(session));
+    return () => listener.subscription.unsubscribe();
+  }, []);
+  const add = product => setCart(current => {
+    const first = Object.values(current)[0];
+    if (first && first.product.shopId !== product.shopId) { window.alert('Your bag can contain items from one shop at a time. Complete or clear this order before adding another shop.'); return current; }
+    return { ...current, [product.id]: { product, qty: (current[product.id]?.qty || 0) + 1 } };
+  });
   const toggleFavorite = id => setFavorites(current => current.includes(id) ? current.filter(x => x !== id) : [...current, id]);
   return <div className="app-frame">
-    {role === 'customer' ? <CustomerStore cart={cart} add={add} toggleFavorite={toggleFavorite} favorites={favorites} setCartOpen={setCartOpen} /> : <Dashboard role={role} setRole={setRole} />}
+    {showStorefront || role === 'customer' ? <CustomerStore cart={cart} add={add} toggleFavorite={toggleFavorite} favorites={favorites} setCartOpen={setCartOpen} /> : <Dashboard role={role} setStorefront={setShowStorefront} user={user} />}
     <AccountAccess user={user} setUser={setUser} />
-    {role === 'customer' && <div className="market-footer"><div><Brand compact /><span>Good things are closer than you think.</span></div><span>© 2026 3cr.com · All rights reserved.</span></div>}
-    <div className="role-switcher" aria-label="Preview different app areas"><span>PREVIEW AS</span><button className={role === 'customer' ? 'role-active' : ''} onClick={() => setRole('customer')}><ShoppingBag size={14} />Shopper</button><button className={role === 'vendor' ? 'role-active' : ''} onClick={() => setRole('vendor')}><Store size={14} />Vendor</button><button className={role === 'admin' ? 'role-active' : ''} onClick={() => setRole('admin')}><ShieldCheck size={14} />Admin</button></div>
-    {cartOpen && <CartDrawer cart={cart} setCart={setCart} close={() => setCartOpen(false)} />}
+    {(showStorefront || role === 'customer') && <div className="market-footer"><div><Brand compact /><span>Good things are closer than you think.</span></div><span>© 2026 3cr.com · All rights reserved.</span></div>}
+    {cartOpen && <CartDrawer cart={cart} setCart={setCart} close={() => setCartOpen(false)} user={user} />}
   </div>;
 }
