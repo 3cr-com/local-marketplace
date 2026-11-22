@@ -30,8 +30,10 @@ export default function SellerWorkspace({ user, setStorefront }) {
   useEffect(() => { refresh(); }, [user?.id]);
 
   async function updateStatus(orderId, status) {
+    const cancellationReason = status === 'cancelled' ? window.prompt('Tell the customer why this order cannot be fulfilled.')?.trim() : '';
+    if (status === 'cancelled' && !cancellationReason) { setMessage('A cancellation reason is required.'); return; }
     setBusy(orderId);
-    try { await updateVendorOrderStatus(orderId, status); await refresh(); }
+    try { await updateVendorOrderStatus(orderId, status, cancellationReason); await refresh(); }
     catch (error) { setMessage(error instanceof Error ? error.message : 'Unable to update order status.'); }
     finally { setBusy(''); }
   }

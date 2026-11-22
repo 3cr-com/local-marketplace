@@ -1,4 +1,4 @@
-export type VendorShop = { id: string; name: string; category: string; address: string; is_active: boolean; primary_category_id?: string | null; location?: unknown | null; shop_categories?: Array<{ category_id: string; categories: { name: string } | null }> }
+export type VendorShop = { id: string; name: string; category: string; address: string; is_active: boolean; opens_at?: string; closes_at?: string; closed_weekdays?: number[]; temporarily_closed?: boolean; primary_category_id?: string | null; location?: unknown | null; shop_categories?: Array<{ category_id: string; categories: { name: string } | null }> }
 export type VendorProduct = {
   id: string; name: string; description: string; category: string; price_paise: number
   stock: number; image_url: string | null; is_active: boolean

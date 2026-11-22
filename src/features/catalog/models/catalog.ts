@@ -10,9 +10,10 @@ export type CatalogProduct = {
   image: string
   badge: string
   color: string
+  shopOpen?: boolean
 }
 
 export type CatalogRow = {
   id: string; name: string; description: string; category: string; price_paise: number; stock: number; image_url: string | null
-  shops: { id: string; name: string } | null
+  shops: { id: string; name: string; opens_at?: string; closes_at?: string; closed_weekdays?: number[]; temporarily_closed?: boolean; timezone?: string } | null
 }
