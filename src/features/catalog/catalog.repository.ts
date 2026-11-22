@@ -21,13 +21,23 @@ export async function loadCatalog(): Promise<CatalogProduct[] | null> {
     .select('id,name,description,category,price_paise,stock,image_url,shops!inner(id,name,opens_at,closes_at,closed_weekdays,temporarily_closed,timezone)')
     .eq('is_active', true).gt('stock', 0).limit(48)
   if (error) throw error
-  return (data as CatalogRow[]).map((product) => ({
+  const rows = data as CatalogRow[]
+  const fallbackAvailability = new Map(rows.map((product) => [product.shops?.id || '', shopOpenNow(product.shops)]))
+  const shopIds = [...new Set(rows.map((product) => product.shops?.id).filter((id): id is string => Boolean(id)))]
+  const { data: availability, error: availabilityError } = await supabase.rpc('catalog_shop_availability', { p_shop_ids: shopIds })
+  const availabilityByShop = availabilityError
+    ? fallbackAvailability
+    : new Map((availability || []).map((row: { shop_id: string; accepting_orders: boolean }) => [row.shop_id, row.accepting_orders]))
+  return rows.map((product) => {
+    const acceptingOrders = availabilityByShop.get(product.shops?.id || '') ?? shopOpenNow(product.shops)
+    return ({
     id: product.id, name: product.name, detail: product.description || 'Available today',
     price: Math.round(product.price_paise / 100), category: product.category,
     shop: product.shops?.name || 'Local shop', shopId: product.shops?.id || '', distance: 'Nearby',
     image: product.image_url || '/images/3cr-fresh-produce.png',
-    badge: shopOpenNow(product.shops) ? (product.stock <= 5 ? 'Limited stock' : 'Available today') : 'Closed now', color: 'green', shopOpen: shopOpenNow(product.shops),
-  }))
+    badge: acceptingOrders ? (product.stock <= 5 ? 'Limited stock' : 'Available today') : 'Closed now', color: 'green', shopOpen: acceptingOrders,
+  })
+  })
 }
 
 export async function loadNearbyCatalog(latitude: number, longitude: number, radiusKm = 10, query = ''): Promise<CatalogProduct[]> {
