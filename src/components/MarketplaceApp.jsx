@@ -70,12 +70,12 @@ function ProductCard({ product, add, isFavorite, toggleFavorite }) {
       <img src={product.image} alt={product.name} loading="lazy" />
       <span className="product-badge">{product.badge}</span>
       <button className={`favorite-button ${isFavorite ? 'is-favorite' : ''}`} aria-label={isFavorite ? 'Remove from favourites' : 'Save to favourites'} onClick={() => toggleFavorite(product.id)}><Heart size={17} fill={isFavorite ? 'currentColor' : 'none'} /></button>
-      <button className="quick-add" aria-label={`Add ${product.name} to bag`} disabled={product.shopOpen === false} onClick={() => add(product)}><Plus size={19} /></button>
+      <button className="quick-add" aria-label={`Add ${product.name} to bag`} onClick={() => add(product)}><Plus size={19} /></button>
     </div>
     <div className="product-meta"><span>{product.shop}</span><span className="distance"><MapPin size={11} />{product.distance}</span></div>
     <h3>{product.name}</h3>
     <p className="product-detail">{product.detail}</p>
-    <div className="price-row"><strong>{money(product.price)}</strong>{product.old && <del>{money(product.old)}</del>}<button className="add-text" disabled={product.shopOpen === false} onClick={() => add(product)}>{product.shopOpen === false ? 'Closed now' : <>Add <Plus size={13} /></>}</button></div>
+    <div className="price-row"><strong>{money(product.price)}</strong>{product.old && <del>{money(product.old)}</del>}<button className="add-text" onClick={() => add(product)}>{product.shopOpen === false ? <>Add for later <Plus size={13} /></> : <>Add <Plus size={13} /></>}</button></div>
   </article>;
 }
 
@@ -310,7 +310,7 @@ export default function MarketplaceApp() {
     const applySession = async (session) => {
       setUser(session?.user || null);
       if (!session?.user) { setRole('customer'); setShowStorefront(false); return; }
-      try { const profile = await loadMyProfile(); setRole(profile?.role === 'super_admin' ? 'super_admin' : profile?.role === 'admin' ? 'admin' : profile?.seller_enabled ? 'vendor' : 'customer'); setShowStorefront(false); }
+      try { const profile = await loadMyProfile(); const nextRole = profile?.role === 'super_admin' ? 'super_admin' : profile?.role === 'admin' ? 'admin' : profile?.seller_enabled ? 'vendor' : 'customer'; setRole(nextRole); setShowStorefront(nextRole === 'vendor' && new URLSearchParams(window.location.search).get('mode') === 'customer'); }
       catch { setRole('customer'); }
     };
     supabase.auth.getSession().then(({ data }) => applySession(data.session));
