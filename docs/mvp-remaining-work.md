@@ -1,6 +1,6 @@
-# Nearby MVP — Remaining Work and Launch Plan
+# 3cr MVP — Remaining Work and Launch Plan
 
-**Status:** Planning checklist based on the current project as of 2026-11-21. This is a gap list, not a claim that the listed features are already working.  
+**Status:** Supporting checklist for [the implementation tracker](implementation-plan.md). This is a gap list, not a claim that the listed features are already working.
 **Payment direction:** Razorpay Route is the planned first marketplace provider, behind a provider-neutral adapter so another approved provider can replace it. This choice is not evidence of provider approval or a live integration.
 
 ## Current baseline
