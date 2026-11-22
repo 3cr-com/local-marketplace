@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowRight, ArrowUpRight, Bell, Box, ChevronDown, CircleHelp, LayoutDashboard, MapPin, ShoppingBag, Store, Users } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, Bell, Box, ChevronDown, CircleHelp, LayoutDashboard, MapPin, Paintbrush, ShoppingBag, Store, Users } from 'lucide-react';
 import { loadAdminCandidates, loadAdminOperations, loadManagedAdmins, loadVendorApplications, reviewVendorApplication, setAdminAccessStatus, setAdminRole, setSellerAccessStatus } from '../features/admin/admin.repository';
 import { supabase } from '../lib/supabase/browser';
+import BrandingWorkspace from './BrandingWorkspace';
 
 const money = (value) => `₹${(Number(value || 0) / 100).toLocaleString('en-IN')}`;
 const today = new Intl.DateTimeFormat('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date()).toUpperCase();
@@ -21,7 +22,7 @@ export default function AdminOperations({ isSuperAdmin = false }) {
   const [busy, setBusy] = useState('');
 
   const menus = useMemo(() => [
-    { title: 'PLATFORM', items: [['Overview', LayoutDashboard], ['Seller requests', Store], ['Sellers', Store], ['Shops', Store], ['Customers', Users], ['Orders', ShoppingBag]] },
+    { title: 'PLATFORM', items: [['Overview', LayoutDashboard], ['Seller requests', Store], ['Sellers', Store], ['Shops', Store], ['Customers', Users], ['Orders', ShoppingBag], ['Branding', Paintbrush]] },
     ...(isSuperAdmin ? [{ title: 'SUPER ADMIN', items: [['Administrator access', Users]] }] : []),
   ], [isSuperAdmin]);
 
@@ -86,6 +87,7 @@ export default function AdminOperations({ isSuperAdmin = false }) {
 function Metric({ label, value, note, icon: Icon }) { return <article className="metric-card"><div className="metric-top"><span>{label}</span><span className="metric-icon"><Icon size={17} /></span></div><div className="metric-value">{value}</div><div className="metric-foot"><b><ArrowUpRight size={13} />Live</b><span>{note}</span></div></article>; }
 
 function AdminPanel({ menu, data, applications, admins, candidates, selectedCandidate, setSelectedCandidate, isSuperAdmin, busy, onReview, onRoleChange, onToggleStatus, onToggleSellerStatus, title, copy }) {
+  if (menu === 'Branding') return <BrandingWorkspace />;
   if (menu === 'Seller requests') return <section className="dash-panel"><PanelHeading title="Seller requests" copy="Review verified customers requesting seller access." /> <DataTable headings={['ACCOUNT', 'APPLIED', 'STATUS', 'ACTIONS']}>{applications.length ? applications.map((item) => <tr key={item.id}><td><b>{item.shop_name}</b><small className="product-description">{item.category}</small></td><td>{new Date(item.created_at).toLocaleDateString('en-IN')}</td><td><Status active>Pending</Status></td><td><div className="application-actions"><button disabled={busy === item.id} onClick={() => onReview(item.id, 'approved')}>Approve</button><button disabled={busy === item.id} onClick={() => onReview(item.id, 'rejected')}>Reject</button></div></td></tr>) : <EmptyRow columns={4} text="No pending seller requests." />}</DataTable></section>;
   if (menu === 'Sellers') return <section className="dash-panel"><PanelHeading title="Seller availability" copy="Suspending a seller takes every shop and product offline. Reactivating does not reopen shops automatically." /> <DataTable headings={['SELLER', 'PHONE', 'STATUS', 'MANAGE']}>{data.vendors.length ? data.vendors.map((seller) => <tr key={seller.id}><td><b>{seller.full_name || 'Unnamed seller'}</b></td><td>{seller.phone || 'Not provided'}</td><td><Status active={seller.seller_access_active}>{seller.seller_access_active ? 'Active' : 'Inactive'}</Status></td><td><button disabled={busy === `${seller.id}-seller-status`} onClick={() => onToggleSellerStatus(seller)}>{seller.seller_access_active ? 'Deactivate seller' : 'Reactivate seller'}</button></td></tr>) : <EmptyRow columns={4} text="No approved sellers yet." />}</DataTable></section>;
   if (menu === 'Shops') return <section className="dash-panel"><PanelHeading title="All shops" copy="Live and inactive seller storefronts." /> <DataTable headings={['SHOP', 'CATEGORY', 'ADDRESS', 'STATUS']}>{data.shops.length ? data.shops.map((shop) => <tr key={shop.id}><td><b>{shop.name}</b></td><td>{shop.category}</td><td>{shop.address}</td><td><Status active={shop.is_active}>{shop.is_active ? 'Live' : 'Inactive'}</Status></td></tr>) : <EmptyRow columns={4} text="No shops have been created." />}</DataTable></section>;

@@ -7,8 +7,11 @@ import { loadMyShops, loadVendorProducts } from '../features/seller/seller.repos
 import { loadVendorApplications, reviewVendorApplication } from '../features/admin/admin.repository';
 import { placeCodOrder } from '../features/orders/order.repository';
 import { createDeliveryAddress, loadMyAddresses } from '../features/addresses/address.repository';
+import { loadPublishedMarketplaceBrand } from '../features/branding/branding.repository';
+import { fallbackMarketplaceBrand } from '../features/branding/models/marketplace-brand';
 import AddressFields, { addressText, emptyAddress } from './AddressFields';
 import AdminOperations from './AdminOperations';
+import MarketplaceBrand from './MarketplaceBrand';
 import SellerWorkspace from './SellerWorkspace';
 import {
   ArrowRight, ArrowUpRight, BadgeCheck, Bell, Box, Boxes, ChevronDown,
@@ -61,10 +64,6 @@ const adminVendors = [
 ];
 const money = (value) => `₹${value.toLocaleString('en-IN')}`;
 
-function Brand({ compact = false }) {
-  return <div className={`brand ${compact ? 'brand-compact' : ''}`}><span className="brand-mark"><ShoppingBag size={19} strokeWidth={2.5} /></span><span><b>3</b><span className="brand-green">cr</span><small>local marketplace</small></span></div>;
-}
-
 function ProductCard({ product, add, isFavorite, toggleFavorite }) {
   return <article className="product-card">
     <div className={`product-image image-${product.color}`}>
@@ -80,7 +79,7 @@ function ProductCard({ product, add, isFavorite, toggleFavorite }) {
   </article>;
 }
 
-function CustomerStore({ cart, add, toggleFavorite, favorites, setCartOpen, user }) {
+function CustomerStore({ cart, add, toggleFavorite, favorites, setCartOpen, user, brand }) {
   const [catalog, setCatalog] = useState([]);
   const [catalogStatus, setCatalogStatus] = useState('');
   const [category, setCategory] = useState('All nearby');
@@ -107,7 +106,7 @@ function CustomerStore({ cart, add, toggleFavorite, favorites, setCartOpen, user
     <header className="store-header">
       <div className="topline"><span><span className="live-dot" /> Good morning, Bengaluru <span className="topline-separator">·</span> Your neighbourhood is in season</span><span>Delivering to <b>Indiranagar, 560038</b> <ChevronDown size={14} /></span></div>
       <div className="main-header">
-        <Brand />
+        <MarketplaceBrand brand={brand} />
         <button className="location-pill" onClick={useCurrentLocation}><MapPin size={17} /><span><small>SHOPPING NEAR</small><b>{location ? 'Your current location' : 'Set your location'}</b></span><ChevronDown size={14} /></button>
         <label className="search-box"><Search size={18} /><input aria-label="Search products and shops" placeholder="Find something lovely nearby..." value={search} onChange={e => setSearch(e.target.value)} /><kbd>⌘ K</kbd></label>
         <div className="header-actions"><button className="icon-button bell-button" aria-label="Notifications"><Bell size={19} /><i /></button>{user && <button className="orders-header-link" onClick={() => window.location.assign('/orders/')}>Orders</button>}<button className="profile-button" aria-label="Your profile" onClick={() => window.location.assign('/account/settings/')}>A</button><button className="bag-button" onClick={() => setCartOpen(true)}><ShoppingCart size={18} /><span>Your bag</span><b>{cartCount}</b></button></div>
@@ -116,8 +115,8 @@ function CustomerStore({ cart, add, toggleFavorite, favorites, setCartOpen, user
     </header>
 
     <main className="store-main">
-      <section id="hero" className="hero-banner">
-        <div className="hero-content"><span className="eyebrow"><span /> YOUR NEIGHBOURHOOD, ON YOUR DOORSTEP</span><h1>Little shops.<br /><em>Big discoveries.</em></h1><p>Good things are closer than you think. Shop independent stores around you and get it delivered today.</p><button className="hero-cta" onClick={() => document.getElementById('nearby-finds')?.scrollIntoView({ behavior: 'smooth' })}>Explore nearby finds <ArrowRight size={16} /></button><div className="hero-proof"><div className="proof-avatars"><span>R</span><span>M</span><span>A</span></div><span><b>4.9/5</b> from your neighbours</span><span className="proof-line" /><span><Truck size={14} /> Same-day delivery</span></div></div>
+      <section id="hero" className="hero-banner" style={{ backgroundImage: `linear-gradient(90deg, ${brand.primary_color}F2 0%, ${brand.primary_color}D6 38%, ${brand.primary_color}22 100%), url("${brand.hero_desktop_url || media.hero}")` }}>
+        <div className="hero-content"><span className="eyebrow"><span /> {brand.hero_eyebrow || brand.tagline_en}</span><h1>{brand.hero_headline || 'Little shops. Big discoveries.'}</h1><p>{brand.hero_description || 'Good things are closer than you think. Shop independent stores around you and get it delivered today.'}</p><button className="hero-cta" onClick={() => { if (brand.hero_cta_url?.startsWith('#')) document.querySelector(brand.hero_cta_url)?.scrollIntoView({ behavior: 'smooth' }); else if (brand.hero_cta_url) window.location.assign(brand.hero_cta_url); else document.getElementById('nearby-finds')?.scrollIntoView({ behavior: 'smooth' }); }}>{brand.hero_cta_label || 'Explore nearby finds'} <ArrowRight size={16} /></button><div className="hero-proof"><div className="proof-avatars"><span>R</span><span>M</span><span>A</span></div><span><b>4.9/5</b> from your neighbours</span><span className="proof-line" /><span><Truck size={14} /> Same-day delivery</span></div></div>
         <div className="hero-note"><span className="note-icon"><MapPin size={17} /></span><div><b>Right around the corner</b><small>1,248 local shops within 10 km</small></div></div>
       </section>
 
@@ -268,6 +267,14 @@ export default function MarketplaceApp() {
   const [cart, setCart] = useState({});
   const [cartOpen, setCartOpen] = useState(false);
   const [favorites, setFavorites] = useState([2]);
+  const [brand, setBrand] = useState(fallbackMarketplaceBrand);
+  useEffect(() => {
+    loadPublishedMarketplaceBrand().then((nextBrand) => {
+      setBrand(nextBrand);
+      document.title = `${nextBrand.name_en} — local marketplace`;
+      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', nextBrand.primary_color);
+    });
+  }, []);
   useEffect(() => {
     if (!supabase) return;
     const applySession = async (session) => {
@@ -286,16 +293,16 @@ export default function MarketplaceApp() {
     return { ...current, [product.id]: { product, qty: (current[product.id]?.qty || 0) + 1 } };
   });
   const toggleFavorite = id => setFavorites(current => current.includes(id) ? current.filter(x => x !== id) : [...current, id]);
-  return <><div className="app-frame">
+  return <><div className="app-frame" style={{ '--brand-primary': brand.primary_color, '--brand-accent': brand.accent_color, '--brand-surface': brand.surface_color }}>
     {role === 'admin' || role === 'super_admin'
       ? <AdminOperations isSuperAdmin={role === 'super_admin'} />
       : role === 'vendor' && !showStorefront
         ? <SellerWorkspace user={user} setStorefront={setShowStorefront} />
       : showStorefront || role === 'customer'
-        ? <CustomerStore cart={cart} add={add} toggleFavorite={toggleFavorite} favorites={favorites} setCartOpen={setCartOpen} user={user} />
+        ? <CustomerStore cart={cart} add={add} toggleFavorite={toggleFavorite} favorites={favorites} setCartOpen={setCartOpen} user={user} brand={brand} />
         : <Dashboard role={role} setStorefront={setShowStorefront} user={user} />}
     {role !== 'admin' && role !== 'super_admin' && <AccountAccess user={user} setUser={setUser} />}
-    {(showStorefront || role === 'customer') && <div className="market-footer"><div><Brand compact /><span>Good things are closer than you think.</span></div><span>© 2026 3cr.com · All rights reserved.</span></div>}
+    {(showStorefront || role === 'customer') && <div className="market-footer"><div><MarketplaceBrand brand={brand} compact /><span>{brand.tagline_en}</span></div><span>© 2026 {brand.name_en} · All rights reserved.</span></div>}
     {cartOpen && <CartDrawer cart={cart} setCart={setCart} close={() => setCartOpen(false)} user={user} />}
   </div><Toaster position="top-right" richColors closeButton /></>;
 }
