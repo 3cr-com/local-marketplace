@@ -39,7 +39,7 @@ export const fallbackMarketplaceBrand: MarketplaceBrand = {
   hero_desktop_url: '/images/notun-bazar-banner.png',
   hero_mobile_url: '/images/notun-bazar-banner2.png',
   hero_eyebrow: 'আপনার পাড়ার বাজার',
-  hero_headline: 'Little shops. Big discoveries.',
+  hero_headline: 'পাড়ার দোকান, হাতের কাছে।',
   hero_description: 'Shop independent stores around you and get it delivered today.',
   hero_cta_label: 'Explore nearby finds',
   hero_cta_url: '#nearby-finds',
