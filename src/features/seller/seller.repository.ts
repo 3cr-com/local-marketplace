@@ -3,7 +3,7 @@ import type { SellerShopInput, VendorProduct, VendorShop } from './models/seller
 
 export async function loadMyShops(userId: string): Promise<VendorShop[]> {
   if (!supabase) throw new Error('Supabase is not configured.')
-  const { data, error } = await supabase.from('shops').select('id,name,category,address,is_active,primary_category_id,location,shop_categories(category_id,categories(name))').eq('owner_id', userId).order('name')
+  const { data, error } = await supabase.from('shops').select('id,name,category,address,is_active,opens_at,closes_at,closed_weekdays,temporarily_closed,primary_category_id,location,shop_categories(category_id,categories(name))').eq('owner_id', userId).order('name')
   if (error) throw error
   return data as VendorShop[]
 }
@@ -78,6 +78,12 @@ export async function updateSelfServiceShopAddress(shopId: string, address: Sell
 export async function updateSelfServiceShop(shopId: string, values: { name: string; categoryIds: string[]; isActive: boolean }) {
   if (!supabase) throw new Error('Supabase is not configured.')
   const { error } = await supabase.rpc('update_self_service_shop', { p_shop_id: shopId, p_name: values.name, p_category_ids: values.categoryIds, p_is_active: values.isActive })
+  if (error) throw error
+}
+
+export async function updateSelfServiceShopHours(shopId: string, values: { opensAt: string; closesAt: string; closedWeekdays: number[]; temporarilyClosed: boolean }) {
+  if (!supabase) throw new Error('Supabase is not configured.')
+  const { error } = await supabase.rpc('update_self_service_shop_hours', { p_shop_id: shopId, p_opens_at: values.opensAt, p_closes_at: values.closesAt, p_closed_weekdays: values.closedWeekdays, p_temporarily_closed: values.temporarilyClosed })
   if (error) throw error
 }
 
