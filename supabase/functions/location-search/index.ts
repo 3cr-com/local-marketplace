@@ -9,15 +9,18 @@ Deno.serve(async (request) => {
     const url = Deno.env.get('SUPABASE_URL')!
     const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    const authClient = createClient(url, anonKey, { global: { headers: { Authorization: authorization } } })
-    const { data: { user }, error: authError } = await authClient.auth.getUser()
-    if (authError || !user) throw new Error('Sign in as a seller to search a shop address')
     const admin = createClient(url, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } })
-    const { data: profile } = await admin.from('profiles').select('seller_enabled,seller_access_active').eq('id', user.id).maybeSingle()
-    if (!profile?.seller_enabled || profile.seller_access_active === false) throw new Error('An active seller account is required to search shop addresses')
-    const { query } = await request.json() as { query?: string }
+    const { query, scope = 'delivery' } = await request.json() as { query?: string; scope?: 'shop' | 'delivery' }
+    if (scope !== 'shop' && scope !== 'delivery') throw new Error('Invalid address-search scope')
+    if (scope === 'shop') {
+      const authClient = createClient(url, anonKey, { global: { headers: { Authorization: authorization } } })
+      const { data: { user }, error: authError } = await authClient.auth.getUser()
+      if (authError || !user) throw new Error('Sign in as a seller to search a shop address')
+      const { data: profile } = await admin.from('profiles').select('seller_enabled,seller_access_active').eq('id', user.id).maybeSingle()
+      if (!profile?.seller_enabled || profile.seller_access_active === false) throw new Error('An active seller account is required to search shop addresses')
+    }
     const normalized = String(query || '').trim().replace(/\s+/g, ' ').toLowerCase()
-    if (normalized.length < 6) throw new Error('Enter a more complete shop address before searching')
+    if (normalized.length < 6) throw new Error('Enter a more complete address before searching')
     const { data: cached } = await admin.from('location_search_cache').select('results').eq('normalized_query', normalized).gt('expires_at', new Date().toISOString()).maybeSingle()
     if (cached?.results) return Response.json({ results: cached.results, cached: true }, { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     const response = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&countrycodes=in&q=${encodeURIComponent(normalized)}`, { headers: { 'User-Agent': 'NotunBazar/1.0 (seller-address-search)' } })

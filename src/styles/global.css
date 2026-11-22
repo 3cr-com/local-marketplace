@@ -346,3 +346,19 @@ table { width: 100%; border-collapse: collapse; text-align: left; white-space: n
 .row-more, .shop-grid-actions button, .shop-grid-actions a { transition: transform .16s ease, border-color .16s ease, background .16s ease, box-shadow .16s ease; }
 .row-more:hover:not(:disabled), .shop-grid-actions button:hover:not(:disabled), .shop-grid-actions a:hover { transform: translateY(-1px); border-color: #8eae80; background: #f4f8ef; box-shadow: 0 4px 10px #315b4217; }
 @media (max-width: 560px) { .admin-promote { align-items: stretch; flex-direction: column; }.admin-promote button { min-height: 38px; }.admin-management-list .admin-row { align-items: flex-start; flex-direction: column; }.admin-management-list .admin-row > div { flex-wrap: wrap; } }
+
+/* Address search is shared by pickup, saved-address, and checkout forms. */
+.address-location { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: end; gap: 12px; padding: 15px; border-style: solid; background: linear-gradient(135deg, #f8fbf5, #fff); }
+.address-search-input, .address-location-actions, .address-location-help, .address-search-feedback, .address-search-results { grid-column: 1 / -1; }
+.address-search-input { display: grid; gap: 7px; }
+.address-location-actions { display: flex; flex-wrap: wrap; gap: 9px; }
+.address-location-actions button { min-height: 38px; }
+.address-location-help { margin-top: -2px; }
+.address-coordinate { min-width: 0; }
+.address-search-feedback { color: #56704f !important; font-weight: 700; }
+.address-search-results { display: grid; gap: 7px; max-height: 210px; overflow: auto; padding: 3px; }
+.address-search-results button { display: grid; gap: 3px; width: 100%; padding: 11px 12px; border: 1px solid #dbe7d5; border-radius: 8px; background: #fff; color: #35533e; text-align: left; cursor: pointer; transition: border-color .16s ease, background .16s ease, transform .16s ease; }
+.address-search-results button:hover { border-color: #93b484; background: #f4f9f0; transform: translateY(-1px); }
+.address-search-results b { font-size: 12px; line-height: 1.35; }
+.address-search-results small { color: #748372; font-size: 10px; }
+@media (max-width: 600px) { .address-location { grid-template-columns: 1fr; }.address-location-actions { align-items: stretch; flex-direction: column; }.address-location-actions button { width: 100%; } }
