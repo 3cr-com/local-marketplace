@@ -1,6 +1,13 @@
-# 3cr MVP — Remaining Work and Launch Plan
+# NTN-BZR-0.1 — MVP remaining work and launch plan
 
-**Status:** Supporting checklist for [the implementation tracker](implementation-plan.md). This is a gap list, not a claim that the listed features are already working.
+## Document details
+
+- **Issue ID:** NTN-BZR-0.1
+- **Title:** MVP remaining work and launch plan
+- **Status:** Supporting reference
+- **Description:** A launch-gap checklist that complements the implementation tracker.
+
+**Status:** Supporting checklist for [the implementation tracker](NTN-BZR-0.0-implementation-plan.md). This is a gap list, not a claim that the listed features are already working.
 **Payment direction:** Razorpay Route is the planned first marketplace provider, behind a provider-neutral adapter so another approved provider can replace it. This choice is not evidence of provider approval or a live integration.
 
 ## Current baseline
