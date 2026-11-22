@@ -8,6 +8,22 @@ export async function loadMyShops(userId: string): Promise<VendorShop[]> {
   return data as VendorShop[]
 }
 
+export type ShopPickupAddress = { shop_id: string; shop_name: string; address_line_1: string; address_line_2?: string | null; locality?: string | null; landmark?: string | null; city: string; district?: string | null; state: string; country?: string | null; pincode: string; latitude: number; longitude: number }
+
+export async function loadMyShopPickupAddresses() {
+  if (!supabase) throw new Error('Supabase is not configured.')
+  const { data, error } = await supabase.rpc('list_my_shop_pickup_addresses')
+  if (error) throw error
+  return (data || []) as ShopPickupAddress[]
+}
+
+export async function loadMyShopPickupAddress(shopId: string) {
+  if (!supabase) throw new Error('Supabase is not configured.')
+  const { data, error } = await supabase.rpc('get_my_shop_pickup_address', { p_shop_id: shopId }).maybeSingle()
+  if (error) throw error
+  return data as Omit<ShopPickupAddress, 'shop_id' | 'shop_name'> | null
+}
+
 export async function loadVendorProducts(shopId: string): Promise<VendorProduct[]> {
   if (!supabase) throw new Error('Supabase is not configured.')
   const { data, error } = await supabase.from('products').select('id,name,description,category,category_id,subcategory_id,brand_id,price_paise,stock,image_url,is_active').eq('shop_id', shopId).order('created_at', { ascending: false })
