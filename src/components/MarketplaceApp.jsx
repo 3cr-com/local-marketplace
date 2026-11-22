@@ -1,12 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { Toaster } from 'sonner';
 import { supabase } from '../lib/supabase/browser';
-import { loadCatalog } from '../features/catalog/catalog.repository';
+import { loadCatalog, loadNearbyCatalog } from '../features/catalog/catalog.repository';
 import { loadMyProfile } from '../features/auth/auth.repository';
 import { loadMyShops, loadVendorProducts } from '../features/seller/seller.repository';
 import { loadVendorApplications, reviewVendorApplication } from '../features/admin/admin.repository';
 import { placeCodOrder } from '../features/orders/order.repository';
 import { createDeliveryAddress, loadMyAddresses } from '../features/addresses/address.repository';
 import AddressFields, { addressText, emptyAddress } from './AddressFields';
+import AdminOperations from './AdminOperations';
+import SellerWorkspace from './SellerWorkspace';
 import {
   ArrowRight, ArrowUpRight, BadgeCheck, Bell, Box, Boxes, ChevronDown,
   CircleHelp, CreditCard, Heart, LayoutDashboard, MapPin, Minus, PackageCheck,
@@ -77,7 +80,7 @@ function ProductCard({ product, add, isFavorite, toggleFavorite }) {
   </article>;
 }
 
-function CustomerStore({ cart, add, toggleFavorite, favorites, setCartOpen }) {
+function CustomerStore({ cart, add, toggleFavorite, favorites, setCartOpen, user }) {
   const [catalog, setCatalog] = useState([]);
   const [catalogStatus, setCatalogStatus] = useState('');
   const [category, setCategory] = useState('All nearby');
@@ -85,13 +88,16 @@ function CustomerStore({ cart, add, toggleFavorite, favorites, setCartOpen }) {
   const [sort, setSort] = useState('Recommended');
   const [savedOnly, setSavedOnly] = useState(false);
   const [radius, setRadius] = useState('10 km');
+  const [location, setLocation] = useState(null);
   useEffect(() => {
     loadCatalog().then((liveProducts) => {
       if (liveProducts) { setCatalog(liveProducts); setCatalogStatus(liveProducts.length ? '' : 'No live products are available yet.'); }
     }).catch(() => { setCatalog([]); setCatalogStatus('Live catalogue could not be loaded. Please try again.'); });
   }, []);
+  useEffect(() => { if (!location) return; const radiusKm = Number.parseInt(radius); loadNearbyCatalog(location.latitude, location.longitude, radiusKm, search).then(products => { setCatalog(products); setCatalogStatus(products.length ? '' : 'No products are available within your selected distance.'); }).catch(() => setCatalogStatus('Nearby products could not be loaded.')); }, [location, radius]);
+  function useCurrentLocation() { if (!navigator.geolocation) { setCatalogStatus('Location is not supported in this browser.'); return; } setCatalogStatus('Finding shops near you…'); navigator.geolocation.getCurrentPosition(position => setLocation({ latitude: position.coords.latitude, longitude: position.coords.longitude }), () => setCatalogStatus('Allow location access to find nearby shops.'), { enableHighAccuracy: true, timeout: 15000 }); }
   const filtered = useMemo(() => {
-    let list = catalog.filter(p => (category === 'All nearby' || p.category === category) && (!savedOnly || favorites.includes(p.id)) && `${p.name} ${p.shop} ${p.category}`.toLowerCase().includes(search.toLowerCase()));
+    let list = catalog.filter(p => (category === 'All nearby' || p.category.toLowerCase().includes(category.toLowerCase())) && (!savedOnly || favorites.includes(p.id)) && `${p.name} ${p.shop} ${p.category}`.toLowerCase().includes(search.toLowerCase()));
     if (sort === 'Price: low to high') list = [...list].sort((a, b) => a.price - b.price);
     if (sort === 'Nearest first') list = [...list].sort((a, b) => parseFloat(a.distance) - parseFloat(b.distance));
     return list;
@@ -102,9 +108,9 @@ function CustomerStore({ cart, add, toggleFavorite, favorites, setCartOpen }) {
       <div className="topline"><span><span className="live-dot" /> Good morning, Bengaluru <span className="topline-separator">·</span> Your neighbourhood is in season</span><span>Delivering to <b>Indiranagar, 560038</b> <ChevronDown size={14} /></span></div>
       <div className="main-header">
         <Brand />
-        <div className="location-pill"><MapPin size={17} /><span><small>SHOPPING NEAR</small><b>Indiranagar, Bengaluru</b></span><ChevronDown size={14} /></div>
+        <button className="location-pill" onClick={useCurrentLocation}><MapPin size={17} /><span><small>SHOPPING NEAR</small><b>{location ? 'Your current location' : 'Set your location'}</b></span><ChevronDown size={14} /></button>
         <label className="search-box"><Search size={18} /><input aria-label="Search products and shops" placeholder="Find something lovely nearby..." value={search} onChange={e => setSearch(e.target.value)} /><kbd>⌘ K</kbd></label>
-        <div className="header-actions"><button className="icon-button bell-button" aria-label="Notifications"><Bell size={19} /><i /></button><button className="profile-button" aria-label="Your profile">A</button><button className="bag-button" onClick={() => setCartOpen(true)}><ShoppingCart size={18} /><span>Your bag</span><b>{cartCount}</b></button></div>
+        <div className="header-actions"><button className="icon-button bell-button" aria-label="Notifications"><Bell size={19} /><i /></button>{user && <button className="orders-header-link" onClick={() => window.location.assign('/orders/')}>Orders</button>}<button className="profile-button" aria-label="Your profile" onClick={() => window.location.assign('/account/settings/')}>A</button><button className="bag-button" onClick={() => setCartOpen(true)}><ShoppingCart size={18} /><span>Your bag</span><b>{cartCount}</b></button></div>
       </div>
       <nav className="category-nav" aria-label="Main categories"><div className="nav-categories">{categories.slice(1).map(c => <button className={category === c.label ? 'nav-active' : ''} key={c.label} onClick={() => setCategory(c.label)}>{c.label}</button>)}</div><button className="near-filter" onClick={() => setRadius(radius === '10 km' ? '5 km' : '10 km')}><MapPin size={14} />Within {radius}<ChevronDown size={13} /></button></nav>
     </header>
@@ -267,7 +273,7 @@ export default function MarketplaceApp() {
     const applySession = async (session) => {
       setUser(session?.user || null);
       if (!session?.user) { setRole('customer'); setShowStorefront(false); return; }
-      try { const profile = await loadMyProfile(); setRole(profile?.role === 'admin' ? 'admin' : profile?.seller_enabled ? 'vendor' : 'customer'); setShowStorefront(false); }
+      try { const profile = await loadMyProfile(); setRole(profile?.role === 'super_admin' ? 'super_admin' : profile?.role === 'admin' ? 'admin' : profile?.seller_enabled ? 'vendor' : 'customer'); setShowStorefront(false); }
       catch { setRole('customer'); }
     };
     supabase.auth.getSession().then(({ data }) => applySession(data.session));
@@ -280,10 +286,16 @@ export default function MarketplaceApp() {
     return { ...current, [product.id]: { product, qty: (current[product.id]?.qty || 0) + 1 } };
   });
   const toggleFavorite = id => setFavorites(current => current.includes(id) ? current.filter(x => x !== id) : [...current, id]);
-  return <div className="app-frame">
-    {showStorefront || role === 'customer' ? <CustomerStore cart={cart} add={add} toggleFavorite={toggleFavorite} favorites={favorites} setCartOpen={setCartOpen} /> : <Dashboard role={role} setStorefront={setShowStorefront} user={user} />}
-    <AccountAccess user={user} setUser={setUser} />
+  return <><div className="app-frame">
+    {role === 'admin' || role === 'super_admin'
+      ? <AdminOperations isSuperAdmin={role === 'super_admin'} />
+      : role === 'vendor' && !showStorefront
+        ? <SellerWorkspace user={user} setStorefront={setShowStorefront} />
+      : showStorefront || role === 'customer'
+        ? <CustomerStore cart={cart} add={add} toggleFavorite={toggleFavorite} favorites={favorites} setCartOpen={setCartOpen} user={user} />
+        : <Dashboard role={role} setStorefront={setShowStorefront} user={user} />}
+    {role !== 'admin' && role !== 'super_admin' && <AccountAccess user={user} setUser={setUser} />}
     {(showStorefront || role === 'customer') && <div className="market-footer"><div><Brand compact /><span>Good things are closer than you think.</span></div><span>© 2026 3cr.com · All rights reserved.</span></div>}
     {cartOpen && <CartDrawer cart={cart} setCart={setCart} close={() => setCartOpen(false)} user={user} />}
-  </div>;
+  </div><Toaster position="top-right" richColors closeButton /></>;
 }

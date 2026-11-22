@@ -42,3 +42,9 @@ export async function removeDeliveryAddress(addressId: string) {
   const { error } = await supabase.from('delivery_addresses').delete().eq('id', addressId)
   if (error) throw error
 }
+
+export async function updateDeliveryAddress(addressId: string, address: DeliveryAddressInput) {
+  if (!supabase) throw new Error('Supabase is not configured.')
+  const { error } = await supabase.rpc('update_delivery_address', { p_address_id: addressId, p_label: address.label, p_recipient_name: address.recipientName, p_phone: address.phone, p_address_line_1: address.addressLine1, p_address_line_2: address.addressLine2 || null, p_locality: address.locality || null, p_landmark: address.landmark || null, p_city: address.city, p_district: address.district || null, p_state: address.state, p_country: address.country || 'India', p_pincode: address.pincode, p_latitude: address.latitude, p_longitude: address.longitude })
+  if (error) throw error
+}
