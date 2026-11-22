@@ -24,9 +24,9 @@ export async function quoteCodDelivery(shopId: string, values: { addressId?: str
   return ((data || [])[0] || null) as DeliveryQuote | null
 }
 
-export async function updateVendorOrderStatus(orderId: string, nextStatus: string) {
+export async function updateVendorOrderStatus(orderId: string, nextStatus: string, cancellationReason?: string) {
   if (!supabase) throw new Error('Supabase is not configured.')
-  const { error } = await supabase.rpc('update_vendor_order_status', { p_order_id: orderId, p_next_status: nextStatus })
+  const { error } = await supabase.rpc('update_vendor_order_status', { p_order_id: orderId, p_next_status: nextStatus, p_cancellation_reason: cancellationReason || null })
   if (error) throw error
 }
 
