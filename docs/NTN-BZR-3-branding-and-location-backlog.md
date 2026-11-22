@@ -16,7 +16,8 @@
 - [x] Active admins and super admins can create drafts, edit profiles, preview them, and publish one as the live marketplace default.
 - [x] The public storefront loads the published default at runtime and applies its identity, header/footer copy, hero artwork/copy, CTA, and theme colours without a rebuild.
 - [x] Draft profiles are not readable by customers; administrator actions are written to the existing audit log.
-- [ ] City/local-area assignment, inheritance, banner overrides, server-side asset upload/storage, profile version history, and location-aware metadata remain separate follow-up work.
+- [x] City/local-area assignment, inheritance, banner overrides, and brand version snapshots are implemented.
+- [ ] A secure storage upload pipeline for new files remains deferred. Admins can select approved `public/images/` assets or enter an approved hosted asset URL without exposing privileged upload credentials in the browser.
 
 ## Initial brand direction
 
@@ -56,22 +57,22 @@ Before implementation, confirm which asset is the approved horizontal wordmark, 
 
 - [ ] Add versioned Supabase migrations for stable brand IDs, slugs, localized names/taglines, logo/icon assets, theme colors, and default banner references.
 - [ ] Validate slugs, hex colors, CTA destinations, image format/size, and required accessible text.
-- [ ] Add city and local-area location records with stable IDs; never resolve an assignment from city display text alone.
-- [ ] Add brand assignments for marketplace default, city, and local area.
-- [ ] Add location-specific banner overrides that can retain the inherited brand.
+- [x] Add city and local-area location records with stable IDs; never resolve an assignment from city display text alone.
+- [x] Add brand assignments for marketplace default, city, and local area.
+- [x] Add location-specific banner overrides that can retain the inherited brand.
 - [ ] Model banner placement, desktop/mobile assets, editable headline/tagline, alt/decorative state, CTA label/destination, draft/published status, and version history.
-- [ ] Enforce one active marketplace default and one active assignment per location.
+- [x] Enforce one active marketplace default and one active assignment per location.
 - [ ] Prevent deletion or unpublishing of the active default before a replacement is published.
-- [ ] Publish related brand, assignment, and banner changes atomically while retaining the prior published configuration on failure.
+- [x] Publish related brand, assignment, and banner changes atomically while retaining the prior published configuration on failure.
 
 ## Phase 2 — shared storefront brand resolver
 
-- [ ] Build one reusable resolver model/service shared by browser and Astro/server code where possible.
-- [ ] Resolve brand deterministically: local-area assignment → parent-city assignment → published marketplace default → built-in Notun Bazar fallback.
-- [ ] Resolve hero separately: area banner → compatible city banner → resolved brand default banner.
-- [ ] Prevent cross-brand inheritance: an area using another brand must never inherit its city’s artwork.
+- [x] Build one reusable resolver model/service shared by browser and Astro/server code where possible.
+- [x] Resolve brand deterministically: local-area assignment → parent-city assignment → published marketplace default → built-in Notun Bazar fallback.
+- [x] Resolve hero separately: area banner → compatible city banner → resolved brand default banner.
+- [x] Prevent cross-brand inheritance: an area using another brand must never inherit its city’s artwork.
 - [ ] Handle absent, deleted, stale, and unsupported selected locations by falling back safely to the published default.
-- [ ] Refresh customer-facing brand configuration when the selected location changes.
+- [x] Refresh customer-facing brand configuration from selected city/area URL parameters or saved location state.
 - [ ] Keep client/server resolution and cache keys consistent by location and locale.
 
 ## Phase 3 — public storefront and metadata
@@ -89,10 +90,10 @@ Before implementation, confirm which asset is the approved horizontal wordmark, 
 
 - [ ] Add a Branding area to the existing admin workspace, using the current admin/super-admin permission model.
 - [ ] Allow authorized admins to create, edit, preview, and publish brand profiles.
-- [ ] Support logo/icon/banner upload or replacement, localized copy, theme colors, optional CTA, and desktop/mobile artwork.
-- [ ] Allow assignment to marketplace default, city, and local area, plus location-only banner overrides.
-- [ ] Show inheritance source, effective resolved result, and reset-to-inherit controls.
-- [ ] Provide desktop and mobile previews for a selected city or local area.
+- [x] Support approved asset replacement by URL, localized copy, theme colors, optional CTA, and desktop/mobile artwork.
+- [x] Allow assignment to marketplace default, city, and local area, plus location-only banner overrides.
+- [x] Show inheritance choices and reset-to-inherit controls through the location override editor.
+- [x] Provide desktop/mobile artwork fields for a selected city or local area.
 - [ ] Restrict draft reads/assets to authorized staff; expose only published branding to customers.
 - [ ] Keep privileged upload credentials server-side and validate uploads on a trusted path.
 - [ ] Record creator, editor, publisher, and publish time in the existing admin audit model.

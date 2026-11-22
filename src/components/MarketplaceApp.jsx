@@ -7,7 +7,7 @@ import { loadMyShops, loadVendorProducts } from '../features/seller/seller.repos
 import { loadVendorApplications, reviewVendorApplication } from '../features/admin/admin.repository';
 import { placeCodOrder } from '../features/orders/order.repository';
 import { createDeliveryAddress, loadMyAddresses } from '../features/addresses/address.repository';
-import { loadPublishedMarketplaceBrand } from '../features/branding/branding.repository';
+import { resolveMarketplaceBrand } from '../features/branding/branding.repository';
 import { fallbackMarketplaceBrand } from '../features/branding/models/marketplace-brand';
 import AddressFields, { addressText, emptyAddress } from './AddressFields';
 import AdminOperations from './AdminOperations';
@@ -269,7 +269,10 @@ export default function MarketplaceApp() {
   const [favorites, setFavorites] = useState([2]);
   const [brand, setBrand] = useState(fallbackMarketplaceBrand);
   useEffect(() => {
-    loadPublishedMarketplaceBrand().then((nextBrand) => {
+    const params = new URLSearchParams(window.location.search);
+    let savedLocation = null;
+    try { savedLocation = JSON.parse(window.localStorage.getItem('ntn-bzr-brand-location') || 'null'); } catch { window.localStorage.removeItem('ntn-bzr-brand-location'); }
+    resolveMarketplaceBrand(params.get('city') || savedLocation?.city, params.get('area') || savedLocation?.area).then((nextBrand) => {
       setBrand(nextBrand);
       document.title = `${nextBrand.name_en} — local marketplace`;
       document.querySelector('meta[name="theme-color"]')?.setAttribute('content', nextBrand.primary_color);

@@ -12,6 +12,43 @@ export async function loadPublishedMarketplaceBrand(): Promise<MarketplaceBrand>
   return data as MarketplaceBrand
 }
 
+export async function resolveMarketplaceBrand(citySlug?: string | null, areaSlug?: string | null): Promise<MarketplaceBrand> {
+  if (!supabase) return fallbackMarketplaceBrand
+  const { data, error } = await supabase.rpc('resolve_marketplace_brand', { p_city_slug: citySlug || null, p_area_slug: areaSlug || null })
+  if (error || !data) return fallbackMarketplaceBrand
+  return data as MarketplaceBrand
+}
+
+export type BrandLocation = { id: string; slug: string; kind: 'city' | 'area'; parent_city_id: string | null; name_bn: string; name_en: string; is_active: boolean }
+export type BrandLocationOverride = { location_id: string; brand_id: string | null; hero_desktop_url: string | null; hero_mobile_url: string | null; hero_eyebrow: string | null; hero_headline: string | null; hero_description: string | null; hero_cta_label: string | null; hero_cta_url: string | null; hero_alt_text: string | null; status: 'draft' | 'published' }
+
+export async function loadBrandLocations(): Promise<BrandLocation[]> {
+  if (!supabase) throw new Error('Supabase is not configured.')
+  const { data, error } = await supabase.from('brand_locations').select('id,slug,kind,parent_city_id,name_bn,name_en,is_active').order('kind').order('name_en')
+  if (error) throw error
+  return (data || []) as BrandLocation[]
+}
+
+export async function loadBrandLocationOverrides(): Promise<BrandLocationOverride[]> {
+  if (!supabase) throw new Error('Supabase is not configured.')
+  const { data, error } = await supabase.from('brand_location_overrides').select('location_id,brand_id,hero_desktop_url,hero_mobile_url,hero_eyebrow,hero_headline,hero_description,hero_cta_label,hero_cta_url,hero_alt_text,status')
+  if (error) throw error
+  return (data || []) as BrandLocationOverride[]
+}
+
+export async function saveBrandLocation(location: Omit<BrandLocation, 'id'>, id?: string) {
+  if (!supabase) throw new Error('Supabase is not configured.')
+  const { data, error } = await supabase.rpc('save_brand_location', { p_id: id || null, p_slug: location.slug, p_kind: location.kind, p_parent_city_id: location.parent_city_id, p_name_bn: location.name_bn, p_name_en: location.name_en, p_is_active: location.is_active })
+  if (error) throw error
+  return data as string
+}
+
+export async function saveBrandLocationOverride(override: BrandLocationOverride) {
+  if (!supabase) throw new Error('Supabase is not configured.')
+  const { error } = await supabase.rpc('save_brand_location_override', { p_location_id: override.location_id, p_brand_id: override.brand_id, p_hero_desktop_url: override.hero_desktop_url || '', p_hero_mobile_url: override.hero_mobile_url || '', p_hero_eyebrow: override.hero_eyebrow || '', p_hero_headline: override.hero_headline || '', p_hero_description: override.hero_description || '', p_hero_cta_label: override.hero_cta_label || '', p_hero_cta_url: override.hero_cta_url || '', p_hero_alt_text: override.hero_alt_text || '', p_status: override.status })
+  if (error) throw error
+}
+
 export async function loadMarketplaceBrands(): Promise<MarketplaceBrand[]> {
   if (!supabase) throw new Error('Supabase is not configured.')
   const { data, error } = await supabase.from('marketplace_brands').select(brandFields).order('updated_at', { ascending: false })
