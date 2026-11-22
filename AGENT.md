@@ -86,3 +86,20 @@ supabase/
 - Review the diff for scope, accidental breaking changes, server-only imports, and exposed secrets.
 - Run the relevant existing type checks, lint, build, and tests supported by the repository. For database changes, use the local Supabase environment for migration and authorization checks when available.
 - Report the change, the checks you ran, and anything you could not verify. State the scope of any tests you added.
+
+## Database migration workflow
+
+- Never run individual SQL files from `supabase/migrations/` in a random order in the Supabase SQL Editor.
+- Treat every migration as immutable once it has been applied anywhere shared. Fixes always go in a new, timestamped migration; never edit, rename, or re-run an old migration.
+- Apply pending migrations through the Supabase CLI migration ledger: run `supabase migration list` to inspect status, then `supabase db push` to apply only pending migrations in filename/version order.
+- Before a production push, compare local and remote migration status. If a migration was manually applied, verify the resulting schema first, then use `supabase migration repair --status applied <version>` to record that exact version. Never mark a version applied without verification.
+- Migration SQL should be safe to re-run where practical (`if exists`, `if not exists`, `create or replace`), but idempotency is a safety net—not a substitute for the migration ledger.
+- Keep schema, RLS, RPC, and Edge Function deployment notes in the pull request description. Run the relevant migration checks before requesting review.
+
+## Git and pull request policy
+
+- Never commit or push directly to `master`.
+- Start every change from the current `master` on a clearly named branch: `feat/<short-name>`, `fix/<short-name>`, `docs/<short-name>`, or `chore/<short-name>`.
+- Use focused, imperative commit messages that describe the delivered change, for example `Add live seller workspace` or `Fix shop deletion rule`.
+- Push the branch and open a pull request targeting `master`. Include a concise summary, migration/deployment instructions when relevant, and verification results.
+- Do not mix unrelated changes in one pull request. Keep generated local state, credentials, temporary files, and editor-specific files out of commits.
