@@ -64,12 +64,18 @@ export async function setAdminAccessStatus(userId: string, isActive: boolean) {
   if (error) throw error
 }
 
+export async function setSellerAccessStatus(userId: string, isActive: boolean) {
+  if (!supabase) throw new Error('Supabase is not configured.')
+  const { error } = await supabase.rpc('set_seller_access_status', { p_user_id: userId, p_is_active: isActive })
+  if (error) throw error
+}
+
 export async function loadAdminOperations() {
   if (!supabase) throw new Error('Supabase is not configured.')
   const [shopsResult, ordersResult, customersResult, applicationsResult] = await Promise.all([
     supabase.from('shops').select('id,name,category,address,is_active,created_at').order('created_at', { ascending: false }).limit(100),
     supabase.from('orders').select('id,status,total_paise,created_at,delivery_address,shops(name)').order('created_at', { ascending: false }).limit(100),
-    supabase.from('profiles').select('id,full_name,phone,created_at,seller_enabled').eq('role', 'customer').order('created_at', { ascending: false }).limit(100),
+    supabase.from('profiles').select('id,full_name,phone,created_at,seller_enabled,seller_access_active').eq('role', 'customer').order('created_at', { ascending: false }).limit(100),
     supabase.from('vendor_applications').select('id,status').limit(100),
   ])
   const error = shopsResult.error || ordersResult.error || customersResult.error || applicationsResult.error
