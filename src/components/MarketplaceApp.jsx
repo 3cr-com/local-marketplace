@@ -91,12 +91,7 @@ function CustomerStore({ cart, add, toggleFavorite, favorites, setCartOpen, user
   const [heroIndex, setHeroIndex] = useState(0);
   const previousCartCount = useRef(0);
   const [cartPulse, setCartPulse] = useState(false);
-  const heroSlides = useMemo(() => [...new Set([
-    brand.hero_desktop_url,
-    '/images/notun-bazar-banner2.png',
-    '/images/notun-bazar-banner3.png',
-    '/images/notun-bazar-banner4.png',
-  ].filter(Boolean))], [brand.hero_desktop_url]);
+  const heroSlides = useMemo(() => [...new Set((brand.hero_slide_urls?.length ? brand.hero_slide_urls : [brand.hero_desktop_url]).filter(Boolean))], [brand.hero_desktop_url, brand.hero_slide_urls]);
   useEffect(() => {
     loadCatalog().then((liveProducts) => {
       if (liveProducts) { setCatalog(liveProducts); setCatalogStatus(liveProducts.length ? '' : 'No live products are available yet.'); }
@@ -295,22 +290,36 @@ export default function MarketplaceApp() {
   const [cartOpen, setCartOpen] = useState(false);
   const [favorites, setFavorites] = useState([2]);
   const [brand, setBrand] = useState(fallbackMarketplaceBrand);
+  const applyResolvedBrand = (city, area) => resolveMarketplaceBrand(city, area).then((nextBrand) => {
+    setBrand(nextBrand);
+    document.title = `${nextBrand.name_en} — local marketplace`;
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', nextBrand.primary_color);
+  });
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     let savedLocation = null;
     try { savedLocation = JSON.parse(window.localStorage.getItem('ntn-bzr-brand-location') || 'null'); } catch { window.localStorage.removeItem('ntn-bzr-brand-location'); }
-    resolveMarketplaceBrand(params.get('city') || savedLocation?.city, params.get('area') || savedLocation?.area).then((nextBrand) => {
-      setBrand(nextBrand);
-      document.title = `${nextBrand.name_en} — local marketplace`;
-      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', nextBrand.primary_color);
-    });
+    applyResolvedBrand(params.get('city') || savedLocation?.city, params.get('area') || savedLocation?.area);
   }, []);
   useEffect(() => {
     if (!supabase) return;
     const applySession = async (session) => {
       setUser(session?.user || null);
       if (!session?.user) { setRole('customer'); setShowStorefront(false); return; }
-      try { const profile = await loadMyProfile(); const nextRole = profile?.role === 'super_admin' ? 'super_admin' : profile?.role === 'admin' ? 'admin' : profile?.seller_enabled ? 'vendor' : 'customer'; setRole(nextRole); setShowStorefront(nextRole === 'vendor' && new URLSearchParams(window.location.search).get('mode') === 'customer'); }
+      try {
+        const profile = await loadMyProfile();
+        const nextRole = profile?.role === 'super_admin' ? 'super_admin' : profile?.role === 'admin' ? 'admin' : profile?.seller_enabled ? 'vendor' : 'customer';
+        setRole(nextRole); setShowStorefront(nextRole === 'vendor' && new URLSearchParams(window.location.search).get('mode') === 'customer');
+        const params = new URLSearchParams(window.location.search);
+        if (!params.get('city') && !params.get('area')) {
+          const address = (await loadMyAddresses())[0];
+          if (address?.city) {
+            const city = address.city.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+            window.localStorage.setItem('ntn-bzr-brand-location', JSON.stringify({ city }));
+            applyResolvedBrand(city, null);
+          }
+        }
+      }
       catch { setRole('customer'); }
     };
     supabase.auth.getSession().then(({ data }) => applySession(data.session));

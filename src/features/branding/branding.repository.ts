@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabase/browser'
 import { fallbackMarketplaceBrand, type MarketplaceBrand } from './models/marketplace-brand'
 
-const brandFields = 'id,slug,name_bn,name_en,tagline_bn,tagline_en,primary_color,accent_color,surface_color,logo_url,icon_url,hero_desktop_url,hero_mobile_url,hero_eyebrow,hero_headline,hero_description,hero_cta_label,hero_cta_url,hero_alt_text,status,is_default,published_at,updated_at'
+const brandFields = 'id,slug,name_bn,name_en,tagline_bn,tagline_en,primary_color,accent_color,surface_color,logo_url,icon_url,hero_desktop_url,hero_mobile_url,hero_slide_urls,hero_eyebrow,hero_headline,hero_description,hero_cta_label,hero_cta_url,hero_alt_text,status,is_default,published_at,updated_at'
 
 export type BrandInput = Omit<MarketplaceBrand, 'id' | 'status' | 'is_default' | 'published_at' | 'updated_at'>
 
@@ -81,6 +81,12 @@ export async function saveMarketplaceBrand(brand: BrandInput, id?: string) {
   })
   if (error) throw error
   return data as string
+}
+
+export async function saveMarketplaceBrandSlides(brandId: string, urls: string[]) {
+  if (!supabase) throw new Error('Supabase is not configured.')
+  const { error } = await supabase.rpc('save_marketplace_brand_slides', { p_brand_id: brandId, p_urls: urls })
+  if (error) throw error
 }
 
 export async function publishMarketplaceBrand(id: string) {

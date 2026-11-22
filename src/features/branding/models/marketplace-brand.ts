@@ -12,6 +12,7 @@ export type MarketplaceBrand = {
   icon_url: string | null
   hero_desktop_url: string | null
   hero_mobile_url: string | null
+  hero_slide_urls: string[]
   hero_eyebrow: string
   hero_headline: string
   hero_description: string
@@ -38,6 +39,7 @@ export const fallbackMarketplaceBrand: MarketplaceBrand = {
   icon_url: '/images/notun-bazar-location.png',
   hero_desktop_url: '/images/notun-bazar-banner.png',
   hero_mobile_url: '/images/notun-bazar-banner2.png',
+  hero_slide_urls: ['/images/notun-bazar-banner.png', '/images/notun-bazar-banner2.png', '/images/notun-bazar-banner3.png', '/images/notun-bazar-banner4.png'],
   hero_eyebrow: 'আপনার পাড়ার বাজার',
   hero_headline: 'পাড়ার দোকান, হাতের কাছে।',
   hero_description: 'Shop independent stores around you and get it delivered today.',

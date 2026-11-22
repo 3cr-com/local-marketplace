@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Check, Eye, Paintbrush, Plus, RefreshCw, Save } from 'lucide-react';
 import { fallbackMarketplaceBrand } from '../features/branding/models/marketplace-brand';
-import { loadMarketplaceBrands, loadBrandLocations, loadBrandLocationOverrides, publishMarketplaceBrand, saveBrandLocation, saveBrandLocationOverride, saveMarketplaceBrand } from '../features/branding/branding.repository';
+import { loadMarketplaceBrands, loadBrandLocations, loadBrandLocationOverrides, publishMarketplaceBrand, saveBrandLocation, saveBrandLocationOverride, saveMarketplaceBrand, saveMarketplaceBrandSlides } from '../features/branding/branding.repository';
 
 const toDraft = (brand = fallbackMarketplaceBrand) => ({
   slug: brand.slug, name_bn: brand.name_bn, name_en: brand.name_en, tagline_bn: brand.tagline_bn,
   tagline_en: brand.tagline_en, primary_color: brand.primary_color, accent_color: brand.accent_color,
   surface_color: brand.surface_color, logo_url: brand.logo_url || '', icon_url: brand.icon_url || '',
   hero_desktop_url: brand.hero_desktop_url || '', hero_mobile_url: brand.hero_mobile_url || '',
+  heroSlideUrls: (brand.hero_slide_urls || []).join('\n'),
   hero_eyebrow: brand.hero_eyebrow, hero_headline: brand.hero_headline, hero_description: brand.hero_description,
   hero_cta_label: brand.hero_cta_label, hero_cta_url: brand.hero_cta_url, hero_alt_text: brand.hero_alt_text,
 });
@@ -57,6 +58,7 @@ export default function BrandingWorkspace() {
     setBusy(true); setMessage('');
     try {
       const id = await saveMarketplaceBrand(draft, selectedId || undefined);
+      await saveMarketplaceBrandSlides(id, draft.heroSlideUrls.split('\n').map((url) => url.trim()).filter(Boolean));
       await refresh(id);
       setMessage(selectedId ? 'Brand profile saved. Published profiles update the storefront immediately.' : 'Brand draft saved. Publish when this is ready for customers.');
     } catch (error) { setMessage(error instanceof Error ? error.message : 'Unable to save the brand draft.'); }
@@ -95,6 +97,7 @@ export default function BrandingWorkspace() {
         <Field label="Icon URL" value={draft.icon_url} onChange={(value) => update('icon_url', value)} />
         <Field label="Desktop hero image URL" value={draft.hero_desktop_url} onChange={(value) => update('hero_desktop_url', value)} />
         <Field label="Mobile hero image URL" value={draft.hero_mobile_url} onChange={(value) => update('hero_mobile_url', value)} />
+        <Field label="Banner slide image URLs" value={draft.heroSlideUrls} onChange={(value) => update('heroSlideUrls', value)} hint="One relative image path or HTTPS URL per line. These images rotate every five seconds." multiline />
         <Field label="Hero eyebrow" value={draft.hero_eyebrow} onChange={(value) => update('hero_eyebrow', value)} />
         <Field label="Hero headline" value={draft.hero_headline} onChange={(value) => update('hero_headline', value)} />
         <Field label="Hero description" value={draft.hero_description} onChange={(value) => update('hero_description', value)} multiline />
