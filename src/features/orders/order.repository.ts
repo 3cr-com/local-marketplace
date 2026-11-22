@@ -10,6 +10,20 @@ export async function placeCodOrder(shopId: string, addressId: string, items: Ar
   return data as string
 }
 
+export type DeliveryQuote = { distance_meters: number; delivery_fee_paise: number }
+
+export async function quoteCodDelivery(shopId: string, values: { addressId?: string; latitude?: number; longitude?: number }) {
+  if (!supabase) throw new Error('Supabase is not configured.')
+  const { data, error } = await supabase.rpc('quote_cod_delivery', {
+    p_shop_id: shopId,
+    p_address_id: values.addressId || null,
+    p_latitude: values.latitude ?? null,
+    p_longitude: values.longitude ?? null,
+  })
+  if (error) throw error
+  return ((data || [])[0] || null) as DeliveryQuote | null
+}
+
 export async function updateVendorOrderStatus(orderId: string, nextStatus: string) {
   if (!supabase) throw new Error('Supabase is not configured.')
   const { error } = await supabase.rpc('update_vendor_order_status', { p_order_id: orderId, p_next_status: nextStatus })
