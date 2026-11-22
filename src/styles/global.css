@@ -129,7 +129,7 @@
 .grecaptcha-badge { opacity: 0; }
 
 .app-frame { min-height: 100vh; padding-bottom: 0; color: #253a30; }
-.store-header { background: #fff; border-bottom: 1px solid #e9eee8; }
+.store-header { position: sticky; top: 0; z-index: 50; background: #fff; border-bottom: 1px solid #e9eee8; box-shadow: 0 5px 18px rgba(35, 59, 43, .04); }
 .topline { height: 34px; padding: 0 max(calc((100vw - 1240px) / 2), 5.5vw); display: flex; align-items: center; justify-content: space-between; background: #244c3a; color: #eaf0e8; font-size: 10px; letter-spacing: .015em; }
 .topline > span:last-child { display: flex; align-items: center; gap: 6px; }
 .topline b { color: white; font-weight: 650; }
@@ -169,6 +169,9 @@
 .near-filter { gap: 6px; color: #667b63; }
 .store-main { max-width: 1240px; margin: 25px auto 0; padding: 0 24px; }
 .hero-banner { position: relative; min-height: 346px; overflow: hidden; border-radius: 16px; background-image: linear-gradient(90deg, rgba(19,47,37,.95) 0%, rgba(19,47,37,.84) 38%, rgba(19,47,37,.12) 100%), url('/images/3cr-neighbourhood-hero.png'); background-position: center 54%; background-size: cover; color: white; }
+.hero-banner-slide { animation: hero-banner-fade .65s ease both; }.hero-slide-controls { position: absolute; right: 18px; bottom: 17px; z-index: 2; display: flex; gap: 6px; }.hero-slide-controls button { width: 7px; height: 7px; padding: 0; border: 0; border-radius: 99px; background: rgba(255,255,255,.45); cursor: pointer; transition: width .2s ease, background .2s ease; }.hero-slide-controls .hero-slide-active { width: 22px; background: #fff; }.bag-button { transition: transform .2s ease, box-shadow .2s ease; }.bag-button-pulse { animation: bag-cart-pop .46s cubic-bezier(.2,.9,.25,1.3); }
+@keyframes hero-banner-fade { from { opacity: .2; transform: scale(1.018); } to { opacity: 1; transform: scale(1); } }
+@keyframes bag-cart-pop { 0% { transform: scale(1); } 45% { transform: scale(1.14) rotate(-2deg); box-shadow: 0 8px 18px rgba(49,91,66,.25); } 100% { transform: scale(1); } }
 .hero-content { position: relative; z-index: 1; width: min(510px, 65%); padding: 38px 43px 27px; }
 .eyebrow { display: flex; align-items: center; gap: 7px; font-size: 8px; font-weight: 750; letter-spacing: .15em; color: #d7e4ce; }
 .eyebrow span { width: 16px; height: 1px; background: #d1dfbe; }

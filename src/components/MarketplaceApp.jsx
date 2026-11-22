@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Toaster } from 'sonner';
 import { supabase } from '../lib/supabase/browser';
 import { loadCatalog, loadNearbyCatalog } from '../features/catalog/catalog.repository';
@@ -88,12 +88,27 @@ function CustomerStore({ cart, add, toggleFavorite, favorites, setCartOpen, user
   const [savedOnly, setSavedOnly] = useState(false);
   const [radius, setRadius] = useState('10 km');
   const [location, setLocation] = useState(null);
+  const [heroIndex, setHeroIndex] = useState(0);
+  const previousCartCount = useRef(0);
+  const [cartPulse, setCartPulse] = useState(false);
+  const heroSlides = useMemo(() => [...new Set([
+    brand.hero_desktop_url,
+    '/images/notun-bazar-banner2.png',
+    '/images/notun-bazar-banner3.png',
+    '/images/notun-bazar-banner4.png',
+  ].filter(Boolean))], [brand.hero_desktop_url]);
   useEffect(() => {
     loadCatalog().then((liveProducts) => {
       if (liveProducts) { setCatalog(liveProducts); setCatalogStatus(liveProducts.length ? '' : 'No live products are available yet.'); }
     }).catch(() => { setCatalog([]); setCatalogStatus('Live catalogue could not be loaded. Please try again.'); });
   }, []);
   useEffect(() => { if (!location) return; const radiusKm = Number.parseInt(radius); loadNearbyCatalog(location.latitude, location.longitude, radiusKm, search).then(products => { setCatalog(products); setCatalogStatus(products.length ? '' : 'No products are available within your selected distance.'); }).catch(() => setCatalogStatus('Nearby products could not be loaded.')); }, [location, radius]);
+  useEffect(() => { setHeroIndex(0); }, [heroSlides.join('|')]);
+  useEffect(() => {
+    if (heroSlides.length < 2) return undefined;
+    const timer = window.setInterval(() => setHeroIndex((current) => (current + 1) % heroSlides.length), 5000);
+    return () => window.clearInterval(timer);
+  }, [heroSlides.length]);
   function useCurrentLocation() { if (!navigator.geolocation) { setCatalogStatus('Location is not supported in this browser.'); return; } setCatalogStatus('Finding shops near you…'); navigator.geolocation.getCurrentPosition(position => setLocation({ latitude: position.coords.latitude, longitude: position.coords.longitude }), () => setCatalogStatus('Allow location access to find nearby shops.'), { enableHighAccuracy: true, timeout: 15000 }); }
   const filtered = useMemo(() => {
     let list = catalog.filter(p => (category === 'All nearby' || p.category.toLowerCase().includes(category.toLowerCase())) && (!savedOnly || favorites.includes(p.id)) && `${p.name} ${p.shop} ${p.category}`.toLowerCase().includes(search.toLowerCase()));
@@ -102,6 +117,17 @@ function CustomerStore({ cart, add, toggleFavorite, favorites, setCartOpen, user
     return list;
   }, [catalog, category, favorites, savedOnly, search, sort]);
   const cartCount = Object.values(cart).reduce((sum, item) => sum + item.qty, 0);
+  useEffect(() => {
+    if (previousCartCount.current !== 0 && previousCartCount.current !== cartCount) {
+      setCartPulse(false);
+      const frame = window.requestAnimationFrame(() => setCartPulse(true));
+      const timer = window.setTimeout(() => setCartPulse(false), 460);
+      previousCartCount.current = cartCount;
+      return () => { window.cancelAnimationFrame(frame); window.clearTimeout(timer); };
+    }
+    previousCartCount.current = cartCount;
+    return undefined;
+  }, [cartCount]);
   return <>
     <header className="store-header">
       <div className="topline"><span><span className="live-dot" /> Good morning, Bengaluru <span className="topline-separator">·</span> Your neighbourhood is in season</span><span>Delivering to <b>Indiranagar, 560038</b> <ChevronDown size={14} /></span></div>
@@ -109,15 +135,16 @@ function CustomerStore({ cart, add, toggleFavorite, favorites, setCartOpen, user
         <MarketplaceBrand brand={brand} />
         <button className="location-pill" onClick={useCurrentLocation}><MapPin size={17} /><span><small>SHOPPING NEAR</small><b>{location ? 'Your current location' : 'Set your location'}</b></span><ChevronDown size={14} /></button>
         <label className="search-box"><Search size={18} /><input aria-label="Search products and shops" placeholder="Find something lovely nearby..." value={search} onChange={e => setSearch(e.target.value)} /><kbd>⌘ K</kbd></label>
-        <div className="header-actions"><button className="icon-button bell-button" aria-label="Notifications"><Bell size={19} /><i /></button>{user && <button className="orders-header-link" onClick={() => window.location.assign('/orders/')}>Orders</button>}<button className="profile-button" aria-label="Your profile" onClick={() => window.location.assign('/account/settings/')}>A</button><button className="bag-button" onClick={() => setCartOpen(true)}><ShoppingCart size={18} /><span>Your bag</span><b>{cartCount}</b></button></div>
+        <div className="header-actions"><button className="icon-button bell-button" aria-label="Notifications"><Bell size={19} /><i /></button>{user && <button className="orders-header-link" onClick={() => window.location.assign('/orders/')}>Orders</button>}<button className="profile-button" aria-label="Your profile" onClick={() => window.location.assign('/account/settings/')}>A</button><button className={`bag-button ${cartPulse ? 'bag-button-pulse' : ''}`} onClick={() => setCartOpen(true)}><ShoppingCart size={18} /><span>Your bag</span><b>{cartCount}</b></button></div>
       </div>
       <nav className="category-nav" aria-label="Main categories"><div className="nav-categories">{categories.slice(1).map(c => <button className={category === c.label ? 'nav-active' : ''} key={c.label} onClick={() => setCategory(c.label)}>{c.label}</button>)}</div><button className="near-filter" onClick={() => setRadius(radius === '10 km' ? '5 km' : '10 km')}><MapPin size={14} />Within {radius}<ChevronDown size={13} /></button></nav>
     </header>
 
     <main className="store-main">
-      <section id="hero" className="hero-banner" style={{ backgroundImage: `linear-gradient(90deg, ${brand.primary_color}F2 0%, ${brand.primary_color}D6 38%, ${brand.primary_color}22 100%), url("${brand.hero_desktop_url || media.hero}")` }}>
+      <section id="hero" className="hero-banner hero-banner-slide" key={heroSlides[heroIndex]} style={{ backgroundImage: `linear-gradient(90deg, ${brand.primary_color}F2 0%, ${brand.primary_color}D6 38%, ${brand.primary_color}22 100%), url("${heroSlides[heroIndex] || media.hero}")` }}>
         <div className="hero-content"><span className="eyebrow"><span /> {brand.hero_eyebrow || brand.tagline_en}</span><h1>{brand.hero_headline || 'Little shops. Big discoveries.'}</h1><p>{brand.hero_description || 'Good things are closer than you think. Shop independent stores around you and get it delivered today.'}</p><button className="hero-cta" onClick={() => { if (brand.hero_cta_url?.startsWith('#')) document.querySelector(brand.hero_cta_url)?.scrollIntoView({ behavior: 'smooth' }); else if (brand.hero_cta_url) window.location.assign(brand.hero_cta_url); else document.getElementById('nearby-finds')?.scrollIntoView({ behavior: 'smooth' }); }}>{brand.hero_cta_label || 'Explore nearby finds'} <ArrowRight size={16} /></button><div className="hero-proof"><div className="proof-avatars"><span>R</span><span>M</span><span>A</span></div><span><b>4.9/5</b> from your neighbours</span><span className="proof-line" /><span><Truck size={14} /> Same-day delivery</span></div></div>
         <div className="hero-note"><span className="note-icon"><MapPin size={17} /></span><div><b>Right around the corner</b><small>1,248 local shops within 10 km</small></div></div>
+        {heroSlides.length > 1 && <div className="hero-slide-controls" aria-label="Banner slides">{heroSlides.map((slide, index) => <button key={slide} className={index === heroIndex ? 'hero-slide-active' : ''} onClick={() => setHeroIndex(index)} aria-label={`Show banner ${index + 1}`} aria-current={index === heroIndex} />)}</div>}
       </section>
 
       <div className="welcome-row"><div><p className="section-kicker">YOUR LOCAL EDIT</p><h2>Good morning, Aanya <span>☀</span></h2><p className="welcome-copy">A little something from the shops you love.</p></div><button className="text-link" onClick={() => setCategory('All nearby')}>View all nearby shops <ArrowRight size={15} /></button></div>
