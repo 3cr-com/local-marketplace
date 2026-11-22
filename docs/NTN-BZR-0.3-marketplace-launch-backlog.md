@@ -1,4 +1,11 @@
-# Marketplace launch backlog
+# NTN-BZR-0.3 — Marketplace launch backlog
+
+## Document details
+
+- **Issue ID:** NTN-BZR-0.3
+- **Title:** Marketplace launch backlog
+- **Status:** Active backlog
+- **Description:** Prioritised launch-readiness work, including checkout, delivery, security, seller, admin, and customer experience.
 
 **Purpose:** the prioritized source of truth for future marketplace development. This document records review findings and planned work only; it does not authorize implementation without confirmation.
 

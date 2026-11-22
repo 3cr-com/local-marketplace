@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Toaster } from 'sonner';
 import { supabase } from '../lib/supabase/browser';
 import { loadCatalog, loadNearbyCatalog } from '../features/catalog/catalog.repository';
@@ -7,8 +7,11 @@ import { loadMyShops, loadVendorProducts } from '../features/seller/seller.repos
 import { loadVendorApplications, reviewVendorApplication } from '../features/admin/admin.repository';
 import { placeCodOrder } from '../features/orders/order.repository';
 import { createDeliveryAddress, loadMyAddresses } from '../features/addresses/address.repository';
+import { resolveMarketplaceBrand } from '../features/branding/branding.repository';
+import { fallbackMarketplaceBrand } from '../features/branding/models/marketplace-brand';
 import AddressFields, { addressText, emptyAddress } from './AddressFields';
 import AdminOperations from './AdminOperations';
+import MarketplaceBrand from './MarketplaceBrand';
 import SellerWorkspace from './SellerWorkspace';
 import {
   ArrowRight, ArrowUpRight, BadgeCheck, Bell, Box, Boxes, ChevronDown,
@@ -61,26 +64,22 @@ const adminVendors = [
 ];
 const money = (value) => `₹${value.toLocaleString('en-IN')}`;
 
-function Brand({ compact = false }) {
-  return <div className={`brand ${compact ? 'brand-compact' : ''}`}><span className="brand-mark"><ShoppingBag size={19} strokeWidth={2.5} /></span><span><b>3</b><span className="brand-green">cr</span><small>local marketplace</small></span></div>;
-}
-
 function ProductCard({ product, add, isFavorite, toggleFavorite }) {
   return <article className="product-card">
     <div className={`product-image image-${product.color}`}>
       <img src={product.image} alt={product.name} loading="lazy" />
       <span className="product-badge">{product.badge}</span>
       <button className={`favorite-button ${isFavorite ? 'is-favorite' : ''}`} aria-label={isFavorite ? 'Remove from favourites' : 'Save to favourites'} onClick={() => toggleFavorite(product.id)}><Heart size={17} fill={isFavorite ? 'currentColor' : 'none'} /></button>
-      <button className="quick-add" aria-label={`Add ${product.name} to bag`} disabled={product.shopOpen === false} onClick={() => add(product)}><Plus size={19} /></button>
+      <button className="quick-add" aria-label={`Add ${product.name} to bag`} onClick={() => add(product)}><Plus size={19} /></button>
     </div>
     <div className="product-meta"><span>{product.shop}</span><span className="distance"><MapPin size={11} />{product.distance}</span></div>
     <h3>{product.name}</h3>
     <p className="product-detail">{product.detail}</p>
-    <div className="price-row"><strong>{money(product.price)}</strong>{product.old && <del>{money(product.old)}</del>}<button className="add-text" disabled={product.shopOpen === false} onClick={() => add(product)}>{product.shopOpen === false ? 'Closed now' : <>Add <Plus size={13} /></>}</button></div>
+    <div className="price-row"><strong>{money(product.price)}</strong>{product.old && <del>{money(product.old)}</del>}<button className="add-text" onClick={() => add(product)}>{product.shopOpen === false ? <>Add for later <Plus size={13} /></> : <>Add <Plus size={13} /></>}</button></div>
   </article>;
 }
 
-function CustomerStore({ cart, add, toggleFavorite, favorites, setCartOpen, user }) {
+function CustomerStore({ cart, add, toggleFavorite, favorites, setCartOpen, user, brand }) {
   const [catalog, setCatalog] = useState([]);
   const [catalogStatus, setCatalogStatus] = useState('');
   const [category, setCategory] = useState('All nearby');
@@ -89,12 +88,22 @@ function CustomerStore({ cart, add, toggleFavorite, favorites, setCartOpen, user
   const [savedOnly, setSavedOnly] = useState(false);
   const [radius, setRadius] = useState('10 km');
   const [location, setLocation] = useState(null);
+  const [heroIndex, setHeroIndex] = useState(0);
+  const previousCartCount = useRef(0);
+  const [cartPulse, setCartPulse] = useState(false);
+  const heroSlides = useMemo(() => [...new Set((brand.hero_slide_urls?.length ? brand.hero_slide_urls : [brand.hero_desktop_url]).filter(Boolean))], [brand.hero_desktop_url, brand.hero_slide_urls]);
   useEffect(() => {
     loadCatalog().then((liveProducts) => {
       if (liveProducts) { setCatalog(liveProducts); setCatalogStatus(liveProducts.length ? '' : 'No live products are available yet.'); }
     }).catch(() => { setCatalog([]); setCatalogStatus('Live catalogue could not be loaded. Please try again.'); });
   }, []);
   useEffect(() => { if (!location) return; const radiusKm = Number.parseInt(radius); loadNearbyCatalog(location.latitude, location.longitude, radiusKm, search).then(products => { setCatalog(products); setCatalogStatus(products.length ? '' : 'No products are available within your selected distance.'); }).catch(() => setCatalogStatus('Nearby products could not be loaded.')); }, [location, radius]);
+  useEffect(() => { setHeroIndex(0); }, [heroSlides.join('|')]);
+  useEffect(() => {
+    if (heroSlides.length < 2) return undefined;
+    const timer = window.setInterval(() => setHeroIndex((current) => (current + 1) % heroSlides.length), 5000);
+    return () => window.clearInterval(timer);
+  }, [heroSlides.length]);
   function useCurrentLocation() { if (!navigator.geolocation) { setCatalogStatus('Location is not supported in this browser.'); return; } setCatalogStatus('Finding shops near you…'); navigator.geolocation.getCurrentPosition(position => setLocation({ latitude: position.coords.latitude, longitude: position.coords.longitude }), () => setCatalogStatus('Allow location access to find nearby shops.'), { enableHighAccuracy: true, timeout: 15000 }); }
   const filtered = useMemo(() => {
     let list = catalog.filter(p => (category === 'All nearby' || p.category.toLowerCase().includes(category.toLowerCase())) && (!savedOnly || favorites.includes(p.id)) && `${p.name} ${p.shop} ${p.category}`.toLowerCase().includes(search.toLowerCase()));
@@ -103,22 +112,34 @@ function CustomerStore({ cart, add, toggleFavorite, favorites, setCartOpen, user
     return list;
   }, [catalog, category, favorites, savedOnly, search, sort]);
   const cartCount = Object.values(cart).reduce((sum, item) => sum + item.qty, 0);
+  useEffect(() => {
+    if (previousCartCount.current !== 0 && previousCartCount.current !== cartCount) {
+      setCartPulse(false);
+      const frame = window.requestAnimationFrame(() => setCartPulse(true));
+      const timer = window.setTimeout(() => setCartPulse(false), 460);
+      previousCartCount.current = cartCount;
+      return () => { window.cancelAnimationFrame(frame); window.clearTimeout(timer); };
+    }
+    previousCartCount.current = cartCount;
+    return undefined;
+  }, [cartCount]);
   return <>
     <header className="store-header">
       <div className="topline"><span><span className="live-dot" /> Good morning, Bengaluru <span className="topline-separator">·</span> Your neighbourhood is in season</span><span>Delivering to <b>Indiranagar, 560038</b> <ChevronDown size={14} /></span></div>
       <div className="main-header">
-        <Brand />
+        <MarketplaceBrand brand={brand} />
         <button className="location-pill" onClick={useCurrentLocation}><MapPin size={17} /><span><small>SHOPPING NEAR</small><b>{location ? 'Your current location' : 'Set your location'}</b></span><ChevronDown size={14} /></button>
         <label className="search-box"><Search size={18} /><input aria-label="Search products and shops" placeholder="Find something lovely nearby..." value={search} onChange={e => setSearch(e.target.value)} /><kbd>⌘ K</kbd></label>
-        <div className="header-actions"><button className="icon-button bell-button" aria-label="Notifications"><Bell size={19} /><i /></button>{user && <button className="orders-header-link" onClick={() => window.location.assign('/orders/')}>Orders</button>}<button className="profile-button" aria-label="Your profile" onClick={() => window.location.assign('/account/settings/')}>A</button><button className="bag-button" onClick={() => setCartOpen(true)}><ShoppingCart size={18} /><span>Your bag</span><b>{cartCount}</b></button></div>
+        <div className="header-actions"><button className="icon-button bell-button" aria-label="Notifications"><Bell size={19} /><i /></button>{user && <button className="orders-header-link" onClick={() => window.location.assign('/orders/')}>Orders</button>}<button className="profile-button" aria-label="Your profile" onClick={() => window.location.assign('/account/settings/')}>A</button><button className={`bag-button ${cartPulse ? 'bag-button-pulse' : ''}`} onClick={() => setCartOpen(true)}><ShoppingCart size={18} /><span>Your bag</span><b>{cartCount}</b></button></div>
       </div>
       <nav className="category-nav" aria-label="Main categories"><div className="nav-categories">{categories.slice(1).map(c => <button className={category === c.label ? 'nav-active' : ''} key={c.label} onClick={() => setCategory(c.label)}>{c.label}</button>)}</div><button className="near-filter" onClick={() => setRadius(radius === '10 km' ? '5 km' : '10 km')}><MapPin size={14} />Within {radius}<ChevronDown size={13} /></button></nav>
     </header>
 
     <main className="store-main">
-      <section id="hero" className="hero-banner">
-        <div className="hero-content"><span className="eyebrow"><span /> YOUR NEIGHBOURHOOD, ON YOUR DOORSTEP</span><h1>Little shops.<br /><em>Big discoveries.</em></h1><p>Good things are closer than you think. Shop independent stores around you and get it delivered today.</p><button className="hero-cta" onClick={() => document.getElementById('nearby-finds')?.scrollIntoView({ behavior: 'smooth' })}>Explore nearby finds <ArrowRight size={16} /></button><div className="hero-proof"><div className="proof-avatars"><span>R</span><span>M</span><span>A</span></div><span><b>4.9/5</b> from your neighbours</span><span className="proof-line" /><span><Truck size={14} /> Same-day delivery</span></div></div>
+      <section id="hero" className="hero-banner hero-banner-slide" key={heroSlides[heroIndex]} style={{ backgroundImage: `linear-gradient(90deg, ${brand.primary_color}F2 0%, ${brand.primary_color}D6 38%, ${brand.primary_color}22 100%), url("${heroSlides[heroIndex] || media.hero}")` }}>
+        <div className="hero-content"><span className="eyebrow"><span /> {brand.hero_eyebrow || brand.tagline_en}</span><h1>{brand.hero_headline || 'Little shops. Big discoveries.'}</h1><p>{brand.hero_description || 'Good things are closer than you think. Shop independent stores around you and get it delivered today.'}</p><button className="hero-cta" onClick={() => { if (brand.hero_cta_url?.startsWith('#')) document.querySelector(brand.hero_cta_url)?.scrollIntoView({ behavior: 'smooth' }); else if (brand.hero_cta_url) window.location.assign(brand.hero_cta_url); else document.getElementById('nearby-finds')?.scrollIntoView({ behavior: 'smooth' }); }}>{brand.hero_cta_label || 'Explore nearby finds'} <ArrowRight size={16} /></button><div className="hero-proof"><div className="proof-avatars"><span>R</span><span>M</span><span>A</span></div><span><b>4.9/5</b> from your neighbours</span><span className="proof-line" /><span><Truck size={14} /> Same-day delivery</span></div></div>
         <div className="hero-note"><span className="note-icon"><MapPin size={17} /></span><div><b>Right around the corner</b><small>1,248 local shops within 10 km</small></div></div>
+        {heroSlides.length > 1 && <div className="hero-slide-controls" aria-label="Banner slides">{heroSlides.map((slide, index) => <button key={slide} className={index === heroIndex ? 'hero-slide-active' : ''} onClick={() => setHeroIndex(index)} aria-label={`Show banner ${index + 1}`} aria-current={index === heroIndex} />)}</div>}
       </section>
 
       <div className="welcome-row"><div><p className="section-kicker">YOUR LOCAL EDIT</p><h2>Good morning, Aanya <span>☀</span></h2><p className="welcome-copy">A little something from the shops you love.</p></div><button className="text-link" onClick={() => setCategory('All nearby')}>View all nearby shops <ArrowRight size={15} /></button></div>
@@ -268,12 +289,37 @@ export default function MarketplaceApp() {
   const [cart, setCart] = useState({});
   const [cartOpen, setCartOpen] = useState(false);
   const [favorites, setFavorites] = useState([2]);
+  const [brand, setBrand] = useState(fallbackMarketplaceBrand);
+  const applyResolvedBrand = (city, area) => resolveMarketplaceBrand(city, area).then((nextBrand) => {
+    setBrand(nextBrand);
+    document.title = `${nextBrand.name_en} — local marketplace`;
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', nextBrand.primary_color);
+  });
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    let savedLocation = null;
+    try { savedLocation = JSON.parse(window.localStorage.getItem('ntn-bzr-brand-location') || 'null'); } catch { window.localStorage.removeItem('ntn-bzr-brand-location'); }
+    applyResolvedBrand(params.get('city') || savedLocation?.city, params.get('area') || savedLocation?.area);
+  }, []);
   useEffect(() => {
     if (!supabase) return;
     const applySession = async (session) => {
       setUser(session?.user || null);
       if (!session?.user) { setRole('customer'); setShowStorefront(false); return; }
-      try { const profile = await loadMyProfile(); setRole(profile?.role === 'super_admin' ? 'super_admin' : profile?.role === 'admin' ? 'admin' : profile?.seller_enabled ? 'vendor' : 'customer'); setShowStorefront(false); }
+      try {
+        const profile = await loadMyProfile();
+        const nextRole = profile?.role === 'super_admin' ? 'super_admin' : profile?.role === 'admin' ? 'admin' : profile?.seller_enabled ? 'vendor' : 'customer';
+        setRole(nextRole); setShowStorefront(nextRole === 'vendor' && new URLSearchParams(window.location.search).get('mode') === 'customer');
+        const params = new URLSearchParams(window.location.search);
+        if (!params.get('city') && !params.get('area')) {
+          const address = (await loadMyAddresses())[0];
+          if (address?.city) {
+            const city = address.city.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+            window.localStorage.setItem('ntn-bzr-brand-location', JSON.stringify({ city }));
+            applyResolvedBrand(city, null);
+          }
+        }
+      }
       catch { setRole('customer'); }
     };
     supabase.auth.getSession().then(({ data }) => applySession(data.session));
@@ -286,16 +332,16 @@ export default function MarketplaceApp() {
     return { ...current, [product.id]: { product, qty: (current[product.id]?.qty || 0) + 1 } };
   });
   const toggleFavorite = id => setFavorites(current => current.includes(id) ? current.filter(x => x !== id) : [...current, id]);
-  return <><div className="app-frame">
+  return <><div className="app-frame" style={{ '--brand-primary': brand.primary_color, '--brand-accent': brand.accent_color, '--brand-surface': brand.surface_color }}>
     {role === 'admin' || role === 'super_admin'
       ? <AdminOperations isSuperAdmin={role === 'super_admin'} />
       : role === 'vendor' && !showStorefront
         ? <SellerWorkspace user={user} setStorefront={setShowStorefront} />
       : showStorefront || role === 'customer'
-        ? <CustomerStore cart={cart} add={add} toggleFavorite={toggleFavorite} favorites={favorites} setCartOpen={setCartOpen} user={user} />
+        ? <CustomerStore cart={cart} add={add} toggleFavorite={toggleFavorite} favorites={favorites} setCartOpen={setCartOpen} user={user} brand={brand} />
         : <Dashboard role={role} setStorefront={setShowStorefront} user={user} />}
     {role !== 'admin' && role !== 'super_admin' && <AccountAccess user={user} setUser={setUser} />}
-    {(showStorefront || role === 'customer') && <div className="market-footer"><div><Brand compact /><span>Good things are closer than you think.</span></div><span>© 2026 3cr.com · All rights reserved.</span></div>}
+    {(showStorefront || role === 'customer') && <div className="market-footer"><div><MarketplaceBrand brand={brand} compact /><span>{brand.tagline_en}</span></div><span>© 2026 {brand.name_en} · All rights reserved.</span></div>}
     {cartOpen && <CartDrawer cart={cart} setCart={setCart} close={() => setCartOpen(false)} user={user} />}
   </div><Toaster position="top-right" richColors closeButton /></>;
 }

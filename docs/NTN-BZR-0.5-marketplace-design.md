@@ -1,4 +1,11 @@
-# 3cr — Hyperlocal Marketplace Design Document
+# NTN-BZR-0.5 — Hyperlocal marketplace design
+
+## Document details
+
+- **Issue ID:** NTN-BZR-0.5
+- **Title:** Hyperlocal marketplace design
+- **Status:** Architecture reference
+- **Description:** Product, architecture, security, data, and operations blueprint for the multi-vendor marketplace.
 
 **Purpose:** Product, architecture, security, data, and operations blueprint for a multi-vendor marketplace serving local Indian shops and customers.  
 **Status:** Design proposal grounded in the current project and its applied Supabase schema. This document describes both what exists and what must be built before real orders or payments can launch.  

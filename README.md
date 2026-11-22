@@ -16,7 +16,7 @@ Open the address printed by Astro (normally `http://localhost:4321`). The catalo
 
 ## Database
 
-Apply the SQL migrations in `supabase/migrations/` to the intended Supabase project before enabling real accounts or orders. Read [docs/marketplace-design.md](docs/marketplace-design.md) and [docs/mvp-remaining-work.md](docs/mvp-remaining-work.md) before production use—payments and checkout intentionally remain guarded until a real provider workflow is implemented.
+Apply the SQL migrations in `supabase/migrations/` to the intended Supabase project before enabling real accounts or orders. Read [docs/NTN-BZR-0.5-marketplace-design.md](docs/NTN-BZR-0.5-marketplace-design.md) and [docs/NTN-BZR-0.1-mvp-remaining-work.md](docs/NTN-BZR-0.1-mvp-remaining-work.md) before production use—payments and checkout intentionally remain guarded until a real provider workflow is implemented.
 
 ## Commands
 

@@ -1,4 +1,11 @@
-# Admin workspace backlog
+# NTN-BZR-0.4 — Admin workspace backlog
+
+## Document details
+
+- **Issue ID:** NTN-BZR-0.4
+- **Title:** Admin workspace backlog
+- **Status:** Active backlog
+- **Description:** Platform workspace visual, permission, and operational planning for admin and super-admin users.
 
 This backlog defines the platform workspace visual and permission model. It intentionally reuses the merchant workspace shell so staff work in one consistent product experience.
 

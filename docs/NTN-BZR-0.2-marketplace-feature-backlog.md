@@ -1,4 +1,11 @@
-# Marketplace feature backlog
+# NTN-BZR-0.2 — Marketplace feature backlog
+
+## Document details
+
+- **Issue ID:** NTN-BZR-0.2
+- **Title:** Marketplace feature backlog
+- **Status:** Historical working backlog
+- **Description:** Earlier marketplace feature planning, retained for traceability alongside the newer launch backlog.
 
 This file is the working source of truth for the next development stages. Items are ordered by customer impact and data integrity.
 

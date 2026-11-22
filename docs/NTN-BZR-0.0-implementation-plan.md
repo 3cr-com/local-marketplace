@@ -1,4 +1,11 @@
-# 3cr MVP implementation tracker
+# NTN-BZR-0.0 — MVP implementation tracker
+
+## Document details
+
+- **Issue ID:** NTN-BZR-0.0
+- **Title:** MVP implementation tracker
+- **Status:** Active reference
+- **Description:** The primary delivery plan for the marketplace MVP and its module-level completion criteria.
 
 **Purpose:** the single working plan for future development. Update the status and acceptance checks whenever a module changes.
 
