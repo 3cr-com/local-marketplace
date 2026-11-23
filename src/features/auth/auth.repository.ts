@@ -6,7 +6,7 @@ export async function loadMyProfile(): Promise<UserProfile | null> {
   const { data: auth, error: authError } = await supabase.auth.getUser()
   if (authError) throw authError
   if (!auth.user) return null
-  const { data, error } = await supabase.from('profiles').select('id,full_name,role,seller_enabled,seller_access_active,seller_requested,phone,preferred_latitude,preferred_longitude').eq('id', auth.user.id).maybeSingle()
+  const { data, error } = await supabase.from('profiles').select('id,full_name,role,seller_enabled,seller_access_active,seller_requested,phone,preferred_latitude,preferred_longitude,avatar_url').eq('id', auth.user.id).maybeSingle()
   if (error) throw error
   return data ? { ...data, email: auth.user.email || null } as UserProfile : null
 }
@@ -14,5 +14,11 @@ export async function loadMyProfile(): Promise<UserProfile | null> {
 export async function updateMyProfile(values: { fullName: string; phone: string; latitude?: number | null; longitude?: number | null }) {
   if (!supabase) throw new Error('Supabase is not configured.')
   const { error } = await supabase.rpc('update_my_profile', { p_full_name: values.fullName, p_phone: values.phone, p_latitude: values.latitude ?? null, p_longitude: values.longitude ?? null })
+  if (error) throw error
+}
+
+export async function updateMyAvatar(avatarUrl: string) {
+  if (!supabase) throw new Error('Supabase is not configured.')
+  const { error } = await supabase.rpc('update_my_avatar', { p_avatar_url: avatarUrl })
   if (error) throw error
 }

@@ -11,4 +11,5 @@ export type UserProfile = {
   phone?: string | null
   preferred_latitude?: number | null
   preferred_longitude?: number | null
+  avatar_url?: string | null
 }

@@ -1,1 +1,5 @@
-scr
+-- Compatibility marker.
+-- This version was recorded as applied on the hosted project, but the checked-in
+-- file contained an accidental `scr` token and could not be replayed locally.
+-- The required activation, delivery, and order behaviour is defined by the
+-- following migrations (20261122170000 onward).

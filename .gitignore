@@ -57,3 +57,7 @@ package.json.backup
 
 dist/
 .tmp/
+
+# Supabase CLI local runtime state
+supabase/.temp/
+supabase/.branches/
