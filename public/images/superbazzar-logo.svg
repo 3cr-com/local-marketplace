@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">SuperBazzar logo</title>
+  <desc id="desc">A shopping bag with an SB monogram</desc>
+  <defs>
+    <linearGradient id="g" x1="30" y1="18" x2="222" y2="237" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#28543F"/>
+      <stop offset="1" stop-color="#6F9955"/>
+    </linearGradient>
+  </defs>
+  <rect x="18" y="18" width="220" height="220" rx="65" fill="url(#g)"/>
+  <path d="M79 96c0-27 18-44 49-44s49 17 49 44" fill="none" stroke="#FFFDF6" stroke-width="16" stroke-linecap="round"/>
+  <path d="M62 91h132l-8 100c-1 17-15 29-32 29H102c-17 0-31-12-32-29L62 91Z" fill="#FFFDF6"/>
+  <path d="M94 143c8 7 18 10 31 10 12 0 19 3 19 9 0 5-6 8-17 8-16 0-28-5-36-13m61-14c8 6 14 13 14 22 0 16-16 25-38 25" fill="none" stroke="#315B42" stroke-width="10" stroke-linecap="round"/>
+</svg>
